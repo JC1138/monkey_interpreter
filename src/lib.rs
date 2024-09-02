@@ -54,7 +54,7 @@ impl Lexer {
         }
     }
 
-    pub fn next_token(&mut self) -> Result<Token, LexerError> {
+    pub fn next_token(&mut self) -> Token {
 
         self.eat_whitespace();
 
@@ -75,11 +75,11 @@ impl Lexer {
                     _ => TokenType::Ident
                 };
     
-                return Ok(Token { typ, literal: ident }) // Need to return early, since the loop ends with the position one char past the end of the identifier
+                return Token { typ, literal: ident } // Need to return early, since the loop ends with the position one char past the end of the identifier
             },
 
             c if Self::is_digit(c) => {
-                return Ok(Token{ typ: TokenType::Int, literal: self.read_int() });
+                return Token{ typ: TokenType::Int, literal: self.read_int() };
             }
 
             '\0' => Token { typ: TokenType::Eof, literal: "".to_string() },
@@ -89,9 +89,7 @@ impl Lexer {
 
         self.read_char();
 
-        Ok(token)
-
-        // Err(LexerError)
+        token
     }
 
     fn is_letter(c: char) -> bool {
@@ -165,7 +163,7 @@ mod tests {
         let mut lexer = Lexer::new(src);
 
         for expected in expected {
-            let token = lexer.next_token().unwrap();
+            let token = lexer.next_token();
 
             assert_eq!(expected.0, token.typ);
             assert_eq!(expected.1, token.literal);
@@ -229,7 +227,7 @@ let result = add(five, ten);
         let mut lexer = Lexer::new(src);
 
         for expected in expected {
-            let token = lexer.next_token().unwrap();
+            let token = lexer.next_token();
 
             assert_eq!(expected.0, token.typ, "Expected type {:?}, got {:?}. Token: {:?}", expected.0, token.typ, token );
             assert_eq!(expected.1, token.literal, "Expected literal {}, got {}. Token: {:?}", expected.1, token.literal, token);
