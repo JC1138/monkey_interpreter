@@ -2,19 +2,16 @@
 #[derive(Debug)]
 pub struct LexerError;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum TokenType {
     Illegal,
     Eof,
-
     // Identifiers + literals
-    Ident, // add, foobar, x, y, ...
+    Identifier, // add, foobar, x, y, ...
     Int, // 1343456
-
     // Operators
     Assign,
     Plus,
-
     // Delimiters
     Comma,
     Semicolon,
@@ -41,7 +38,7 @@ pub enum TokenType {
     Return,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Token {
     pub typ: TokenType,
     pub literal: String,
@@ -57,7 +54,12 @@ pub struct Lexer {
 impl Lexer {
     pub fn new(src: String) -> Self {
         let chars: Vec<char> = src.chars().collect();
-        let first_char = chars[0];
+        let first_char = if chars.len() > 0 {
+            chars[0]
+        }else {
+            '\0'
+        };
+
         Self {
             src,
             chars,
@@ -69,11 +71,12 @@ impl Lexer {
     pub fn next_token(&mut self) -> Token {
 
         self.eat_whitespace();
+
         let c = self.ch;
 
         let token = match c {
             '=' => {
-                if self.peek() == '=' {
+                if self.peek_char() == '=' {
                     self.read_char();
                     Token { typ: TokenType::Eq, literal: "==".to_string()}
                 }else {
@@ -93,7 +96,7 @@ impl Lexer {
             '<' => Self::get_single_char_token(TokenType::LT, c),
             '>' => Self::get_single_char_token(TokenType::GT, c),
             '!' => {
-                if self.peek() == '=' {
+                if self.peek_char() == '=' {
                     self.read_char();
                     Token { typ: TokenType::NEq, literal: "!=".to_string()}
                 }else {
@@ -113,7 +116,7 @@ impl Lexer {
                         "true" => TokenType::True,
                         "false" => TokenType::False,
                         "return" => TokenType::Return,
-                        _ => TokenType::Ident
+                        _ => TokenType::Identifier
                     },
                     literal: ident,
                 };
@@ -142,11 +145,11 @@ impl Lexer {
     }
 
     fn read_char(&mut self) {
-        self.ch = self.peek();
+        self.ch = self.peek_char();
         self.position += 1;
     }
 
-    fn peek(&self) -> char {
+    fn peek_char(&self) -> char {
         let new_pos = self.position + 1;
         if new_pos >= self.chars.len() {
             '\0'
@@ -235,45 +238,46 @@ mod tests {
             } else {
                 return false;
             }
+
             10 == 10;
             10 != 9;
         "#.to_string();
 
         let expected = vec![
             (TokenType::Let, "let"),
-            (TokenType::Ident, "five"),
+            (TokenType::Identifier, "five"),
             (TokenType::Assign, "="),
             (TokenType::Int, "5"),
             (TokenType::Semicolon, ";"),
             (TokenType::Let, "let"),
-            (TokenType::Ident, "ten"),
+            (TokenType::Identifier, "ten"),
             (TokenType::Assign, "="),
             (TokenType::Int, "10"),
             (TokenType::Semicolon, ";"),
             (TokenType::Let, "let"),
-            (TokenType::Ident, "add"),
+            (TokenType::Identifier, "add"),
             (TokenType::Assign, "="),
             (TokenType::Function, "fn"),
             (TokenType::LParen, "("),
-            (TokenType::Ident, "x"),
+            (TokenType::Identifier, "x"),
             (TokenType::Comma, ","),
-            (TokenType::Ident, "y"),
+            (TokenType::Identifier, "y"),
             (TokenType::RParen, ")"),
             (TokenType::LBrace, "{"),
-            (TokenType::Ident, "x"),
+            (TokenType::Identifier, "x"),
             (TokenType::Plus, "+"),
-            (TokenType::Ident, "y"),
+            (TokenType::Identifier, "y"),
             (TokenType::Semicolon, ";"),
             (TokenType::RBrace, "}"),
             (TokenType::Semicolon, ";"),
             (TokenType::Let, "let"),
-            (TokenType::Ident, "result"),
+            (TokenType::Identifier, "result"),
             (TokenType::Assign, "="),
-            (TokenType::Ident, "add"),
+            (TokenType::Identifier, "add"),
             (TokenType::LParen, "("),
-            (TokenType::Ident, "five"),
+            (TokenType::Identifier, "five"),
             (TokenType::Comma, ","),
-            (TokenType::Ident, "ten"),
+            (TokenType::Identifier, "ten"),
             (TokenType::RParen, ")"),
             (TokenType::Semicolon, ";"),
             (TokenType::Exclam, "!"),

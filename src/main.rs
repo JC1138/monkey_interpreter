@@ -1,6 +1,6 @@
 use std::io::{self, Write};
 
-use monkey_interpreter::lexer::{self, Lexer, TokenType};
+use monkey_interpreter::lexer::{Lexer, TokenType};
 
 fn main() {
     loop {
