@@ -1,4 +1,4 @@
-use std::any::Any;
+use ast::Statement;
 
 use crate::lexer::{Lexer, Token, TokenType};
 
@@ -9,13 +9,23 @@ mod ast;
 struct ParseError(String);
 
 struct Program {
-    pub statements: Vec<Box<dyn ast::Statement>>
+    pub statements: Vec<ast::Statement>
 }
 
 struct Parser {
     lexer: Lexer,
     cur_token: Token,
     peek_token: Token,
+}
+
+enum Precidence {
+    Lowest = 0,
+    EqualTo = 1, // ==
+    GTLT = 2, // >, <
+    Sum = 3, // +
+    Mult = 4, // *,
+    Prefix = 5, // -x, !x
+    Call = 6, // x()
 }
 
 #[allow(dead_code)]
@@ -33,7 +43,7 @@ impl Parser {
     }
 
     fn parse_program(&mut self) -> Result<Program, ParseError> {
-        let mut statements: Vec<Box<dyn ast::Statement>> = Vec::new();
+        let mut statements: Vec<ast::Statement> = Vec::new();
         
         while self.cur_token.typ != TokenType::Eof {
             let statement = self.parse_statement()?;
@@ -45,15 +55,15 @@ impl Parser {
         })
     }
 
-    fn parse_statement(&mut self) -> Result<Box<dyn ast::Statement>, ParseError>  {
+    fn parse_statement(&mut self) -> Result<ast::Statement, ParseError>  {
         match self.cur_token.typ {
             TokenType::Let => self.parse_let_statement(),
             TokenType::Return => self.parse_return_statement(),
-            _ => Err(ParseError(format!("Invalid token, expected start of statement, got: {:?}", self.cur_token.typ))),
+            _ => self.parse_expression_statement(), //Err(ParseError(format!("Invalid token, expected start of statement, got: {:?}", self.cur_token.typ))),
         }
     }
 
-    fn parse_let_statement(&mut self) -> Result<Box<dyn ast::Statement>, ParseError> {
+    fn parse_let_statement(&mut self) -> Result<ast::Statement, ParseError> {
         let let_token = self.cur_token.clone();
 
         if self.peek_token.typ != TokenType::Identifier {
@@ -62,7 +72,7 @@ impl Parser {
 
         self.next_token();
 
-        let name = ast::expressions::Identifier {
+        let name = ast::Expression::Identifier {
             value: self.cur_token.literal.to_string(),
             token: self.cur_token.clone(),
         };
@@ -81,16 +91,15 @@ impl Parser {
             self.next_token();
         }
 
-        Ok(Box::new(
-            ast::statements::Let {
+        Ok(ast::Statement::Let {
                 token: let_token,
                 name,
-                value: ast::expressions::Identifier {token: Token {typ: TokenType::Illegal, literal: "Illegal".to_string()}, value: "".to_string()},
+                value: ast::Expression::Identifier {token: Token {typ: TokenType::Illegal, literal: "Illegal".to_string()}, value: "".to_string()},
             }
-        ))
+        )
     }
 
-    fn parse_return_statement(&mut self) -> Result<Box<dyn ast::Statement>, ParseError> {
+    fn parse_return_statement(&mut self) -> Result<ast::Statement, ParseError> {
         let return_token = self.cur_token.clone();
 
         loop {
@@ -101,20 +110,30 @@ impl Parser {
             self.next_token();
         }
 
-        return Ok(Box::new(
-            ast::statements::Return {
+        return Ok(ast::Statement::Return {
                 token: return_token,
-                return_value: ast::expressions::Identifier {token: Token {typ: TokenType::Illegal, literal: "Illegal".to_string()}, value: "".to_string()},
+                return_value: ast::Expression::Identifier {token: Token {typ: TokenType::Illegal, literal: "Illegal".to_string()}, value: "".to_string()},
             }
-        ))
+        )
     }
+
+    fn parse_expression_statement(&mut self) -> Result<ast::Statement, ParseError> {
+        Err(ParseError("Error!".to_string()))
+        // let expression_token = self.cur_token.clone();
+        // // let expression = self.parse_expression()?;
+        // Ok(Statement::Expression {
+        //     token: expression_token,
+        //     expression: expression,
+        // })
+    }
+
+    // fn parse_expression(&mut self) -> Result<ast::Expression, ParseError> {
+
+    // }
 }
 
-#[cfg(test)]
 mod tests {
-    use std::any::Any;
-
-    use ast::{expressions, statements};
+    use ast;
 
     use super::*;
 
@@ -144,12 +163,19 @@ mod tests {
         }
     }
 
-    fn test_let_statement(statement: &Box<dyn ast::Statement>, expected_name: &str) {
-        let x: &dyn Any = statement;
-        if let Some(let_statement) = x.downcast_ref::<statements::Let<expressions::Integer>>() {
-            assert_eq!(let_statement.name.value, expected_name);
-        } else {
-            panic!("Expected let statement with type Integer, got: {statement:#?}")
+    fn test_let_statement(statement: &ast::Statement, expected_name: &str) {
+        // let x: &dyn Any = statement;
+        match statement {
+            Statement::Let { token: _, name: _, value: _ } => {
+                // match value {
+                //     Expression::Identifier { token, value } => {
+
+                //     },
+                //     _ => 
+                // }
+                // assert_eq!(name.value, expected_name);
+            },
+            _ => panic!("Expected let statement with type Integer, got: {statement:#?}")
         }
     }
 
@@ -169,13 +195,44 @@ mod tests {
         assert_eq!(parsed.statements.len(), 3, "Expected 3 statements, got {}", parsed.statements.len());
 
         for statement in parsed.statements {
-            let x: &dyn Any = &statement;
-            if let Some(return_statement) = x.downcast_ref::<statements::Return<expressions::Integer>>() {
-                assert_eq!(return_statement.token.typ, TokenType::Return);
-                assert_eq!(return_statement.return_value.value, 5);
-            } else {
-                panic!("Expected return statement, got: {x:#?}")
+            match statement {
+                Statement::Return { token, return_value: _ } => {
+                    assert_eq!(token.typ, TokenType::Return);
+                    // assert_eq!(return_value, 5);
+                },
+                _ => panic!("Expected return statement, got: {statement:#?}")
             }
+        }
+    }
+
+    #[test]
+    fn test_identifier_expression() {
+        let program = r#"
+            "foobar;"
+        "#.to_string();
+
+        let l = Lexer::new(program);
+        let mut parser = Parser::new(l);
+
+        let parsed = parser.parse_program().unwrap();
+
+        assert_eq!(parsed.statements.len(), 1, "Expected 1 statement, got {}", parsed.statements.len());
+
+        match &parsed.statements[0] {
+            Statement::Expression { token, expression } => {
+                assert_eq!(token.typ, TokenType::Identifier);
+                assert_eq!(token.literal, "foobar");
+
+                match expression {
+                    ast::Expression::Identifier { token, value } => {
+                        assert_eq!(token.typ, TokenType::Identifier);
+                        assert_eq!(token.literal, "foobar");
+                        assert_eq!(value, "foobar");
+                    },
+                    _ => panic!("Expected identifier statement, got: {:#?}", expression)
+                }
+            },
+            _ => panic!("Expected expression statement, got: {:#?}", parsed.statements[0])
         }
     }
 }

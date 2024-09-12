@@ -1,51 +1,79 @@
 use std::fmt::Debug;
-
 use crate::lexer::Token;
 
-pub trait Expression: Debug {}
+#[derive(Debug, PartialEq)]
+pub enum Expression {
+    Identifier {
+        token: Token,
+        value: String,
+    },
+    Integer {
+        token: Token,
+        value: usize,
+    }
+}
 
-pub trait Statement: Debug {}
+#[derive(Debug, PartialEq)]
+pub enum Statement {
+    Expression {
+        token: Token,
+        expression: Expression,
+    },
+    Let {
+        token: Token,
+        name: Expression,
+        value: Expression,
+    },
+    Return {
+        token: Token,
+        return_value: Expression,
+    }
+}
 
-pub mod expressions {
-    use super::*;
+// pub trait Expression: Debug {}
+
+// pub trait Statement: Debug {}
+
+// pub mod expressions {
+//     use super::*;
     
-    #[derive(Debug, PartialEq)]
-    pub struct Identifier {
-        pub token: Token,
-        pub value: String,
-    }
-    impl Expression for Identifier {}
+//     #[derive(Debug, PartialEq)]
+//     pub struct Identifier {
+//         pub token: Token,
+//         pub value: String,
+//     }
+//     impl Expression for Identifier {}
 
-    #[derive(Debug, PartialEq)]
-    pub struct Integer {
-        pub token: Token,
-        pub value: usize,
-    }
-    impl Expression for Integer {}
-}
+//     #[derive(Debug, PartialEq)]
+//     pub struct Integer {
+//         pub token: Token,
+//         pub value: usize,
+//     }
+//     impl Expression for Integer {}
+// }
 
-pub mod statements {
-    use super::*;
+// pub mod statements {
+//     use super::*;
 
-    #[derive(Debug, PartialEq)]
-    pub struct Expression<T: super::Expression> {
-        pub token: Token,   // The first token in the expression
-        pub expression: T,
-    }
-    impl<T: super::Expression> Statement for Expression<T> {}
+//     #[derive(Debug)]
+//     pub struct Expression {
+//         pub token: Token,   // The first token in the expression
+//         pub expression: Box<dyn super::Expression>,
+//     }
+//     impl Statement for Expression {}
 
-    #[derive(Debug, PartialEq)]
-    pub struct Let<T: super::Expression> {
-        pub token: Token,
-        pub name: expressions::Identifier,
-        pub value: T,
-    }
-    impl<T: super::Expression> Statement for Let<T> {}
+//     #[derive(Debug)]
+//     pub struct Let {
+//         pub token: Token,
+//         pub name: expressions::Identifier,
+//         pub value: Box<dyn super::Expression>,
+//     }
+//     impl Statement for Let {}
 
-    #[derive(Debug, PartialEq)]
-    pub struct Return<T: super::Expression> {
-        pub token: Token,
-        pub return_value: T,
-    }
-    impl<T: super::Expression> Statement for Return<T> {}
-}
+//     #[derive(Debug)]
+//     pub struct Return {
+//         pub token: Token,
+//         pub return_value: Box<dyn super::Expression>,
+//     }
+//     impl Statement for Return {}
+// }
