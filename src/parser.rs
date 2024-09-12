@@ -1,3 +1,5 @@
+use std::any::Any;
+
 use crate::lexer::{Lexer, Token, TokenType};
 
 mod arena_tree;
@@ -60,7 +62,7 @@ impl Parser {
 
         self.next_token();
 
-        let name = ast::Identifier {
+        let name = ast::expressions::Identifier {
             value: self.cur_token.literal.to_string(),
             token: self.cur_token.clone(),
         };
@@ -80,10 +82,10 @@ impl Parser {
         }
 
         Ok(Box::new(
-            ast::LetStatement {
+            ast::statements::Let {
                 token: let_token,
                 name,
-                value: ast::Expression,
+                value: ast::expressions::Identifier {token: Token {typ: TokenType::Illegal, literal: "Illegal".to_string()}, value: "".to_string()},
             }
         ))
     }
@@ -100,18 +102,19 @@ impl Parser {
         }
 
         return Ok(Box::new(
-            ast::ReturnStatement {
+            ast::statements::Return {
                 token: return_token,
-                return_value: ast::Expression,
+                return_value: ast::expressions::Identifier {token: Token {typ: TokenType::Illegal, literal: "Illegal".to_string()}, value: "".to_string()},
             }
         ))
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use ast::{LetStatement, ReturnStatement, Statement};
+    use std::any::Any;
+
+    use ast::{expressions, statements};
 
     use super::*;
 
@@ -141,11 +144,12 @@ mod tests {
         }
     }
 
-    fn test_let_statement(statement: &Box<dyn Statement>, expected_name: &str) {
-        if let Some(let_statement) = statement.as_any().downcast_ref::<LetStatement>() {
+    fn test_let_statement(statement: &Box<dyn ast::Statement>, expected_name: &str) {
+        let x: &dyn Any = statement;
+        if let Some(let_statement) = x.downcast_ref::<statements::Let<expressions::Integer>>() {
             assert_eq!(let_statement.name.value, expected_name);
         } else {
-            panic!("Expected let statement, got: {statement:#?}")
+            panic!("Expected let statement with type Integer, got: {statement:#?}")
         }
     }
 
@@ -153,7 +157,7 @@ mod tests {
     fn return_test() {
         let program = r#"
             return 5;
-            let foobar = 838383;
+            return asdf;
             return 10;
         "#.to_string();
 
@@ -165,12 +169,13 @@ mod tests {
         assert_eq!(parsed.statements.len(), 3, "Expected 3 statements, got {}", parsed.statements.len());
 
         for statement in parsed.statements {
-            if let Some(return_statement) = statement.as_any().downcast_ref::<ReturnStatement>() {
+            let x: &dyn Any = &statement;
+            if let Some(return_statement) = x.downcast_ref::<statements::Return<expressions::Integer>>() {
                 assert_eq!(return_statement.token.typ, TokenType::Return);
+                assert_eq!(return_statement.return_value.value, 5);
             } else {
-                panic!("Expected return statement, got: {statement:#?}")
+                panic!("Expected return statement, got: {x:#?}")
             }
         }
-
     }
 }

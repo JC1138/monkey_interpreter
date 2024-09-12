@@ -1,41 +1,51 @@
-use std::{any::Any, fmt::Debug};
+use std::fmt::Debug;
 
 use crate::lexer::Token;
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct Expression;
+pub trait Expression: Debug {}
 
-pub trait Statement: Debug {
-    fn as_any(&self) -> &dyn Any;
-}
+pub trait Statement: Debug {}
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct LetStatement {
-    pub token: Token,
-    pub name: Identifier,
-    pub value: Expression
-}
-
-impl Statement for LetStatement {
-    fn as_any(&self) -> &dyn Any {
-        self
+pub mod expressions {
+    use super::*;
+    
+    #[derive(Debug, PartialEq)]
+    pub struct Identifier {
+        pub token: Token,
+        pub value: String,
     }
-}
+    impl Expression for Identifier {}
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct ReturnStatement {
-    pub token: Token,
-    pub return_value: Expression,
-}
-
-impl Statement for ReturnStatement {
-    fn as_any(&self) -> &dyn Any {
-        self
+    #[derive(Debug, PartialEq)]
+    pub struct Integer {
+        pub token: Token,
+        pub value: usize,
     }
+    impl Expression for Integer {}
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct Identifier {
-    pub token: Token,
-    pub value: String,
+pub mod statements {
+    use super::*;
+
+    #[derive(Debug, PartialEq)]
+    pub struct Expression<T: super::Expression> {
+        pub token: Token,   // The first token in the expression
+        pub expression: T,
+    }
+    impl<T: super::Expression> Statement for Expression<T> {}
+
+    #[derive(Debug, PartialEq)]
+    pub struct Let<T: super::Expression> {
+        pub token: Token,
+        pub name: expressions::Identifier,
+        pub value: T,
+    }
+    impl<T: super::Expression> Statement for Let<T> {}
+
+    #[derive(Debug, PartialEq)]
+    pub struct Return<T: super::Expression> {
+        pub token: Token,
+        pub return_value: T,
+    }
+    impl<T: super::Expression> Statement for Return<T> {}
 }
