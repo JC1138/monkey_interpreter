@@ -1,5 +1,3 @@
-use ast::Statement;
-
 use crate::lexer::{Lexer, Token, TokenType};
 
 mod arena_tree;
@@ -12,12 +10,6 @@ struct Program {
     pub statements: Vec<ast::Statement>
 }
 
-struct Parser {
-    lexer: Lexer,
-    cur_token: Token,
-    peek_token: Token,
-}
-
 enum Precidence {
     Lowest = 0,
     EqualTo = 1, // ==
@@ -26,6 +18,12 @@ enum Precidence {
     Mult = 4, // *,
     Prefix = 5, // -x, !x
     Call = 6, // x()
+}
+
+struct Parser {
+    lexer: Lexer,
+    cur_token: Token,
+    peek_token: Token,
 }
 
 #[allow(dead_code)]
@@ -47,6 +45,7 @@ impl Parser {
         
         while self.cur_token.typ != TokenType::Eof {
             let statement = self.parse_statement()?;
+            println!("{statement:#?}");
             statements.push(statement);
         }
 
@@ -59,7 +58,7 @@ impl Parser {
         match self.cur_token.typ {
             TokenType::Let => self.parse_let_statement(),
             TokenType::Return => self.parse_return_statement(),
-            _ => self.parse_expression_statement(), //Err(ParseError(format!("Invalid token, expected start of statement, got: {:?}", self.cur_token.typ))),
+            _ => self.parse_expression_statement(),
         }
     }
 
@@ -77,64 +76,109 @@ impl Parser {
             token: self.cur_token.clone(),
         };
 
-        if self.peek_token.typ != TokenType::Assign {
+        self.next_token();
+
+        if self.cur_token.typ != TokenType::Assign {
             return Err(ParseError(format!("Invlaid `let` statement, expected Assign, got: {:?}", self.peek_token.typ)));
         }
 
         self.next_token();
 
-        loop {
-            if self.cur_token.typ == TokenType::Semicolon {
-                self.next_token();
-                break;
-            }
-            self.next_token();
-        }
+        let expression = self.parse_expression(Precidence::Lowest)?;
+
+        self.end_line();
 
         Ok(ast::Statement::Let {
                 token: let_token,
                 name,
-                value: ast::Expression::Identifier {token: Token {typ: TokenType::Illegal, literal: "Illegal".to_string()}, value: "".to_string()},
+                value: expression, //ast::Expression::Identifier {token: Token {typ: TokenType::Illegal, literal: "Illegal".to_string()}, value: "".to_string()}, // TODO: replace with actual expression
             }
         )
     }
 
     fn parse_return_statement(&mut self) -> Result<ast::Statement, ParseError> {
         let return_token = self.cur_token.clone();
+        let expression = self.parse_expression(Precidence::Lowest)?;
 
-        loop {
-            if self.cur_token.typ == TokenType::Semicolon {
-                self.next_token();
-                break;
-            }
-            self.next_token();
-        }
+        self.end_line();
 
-        return Ok(ast::Statement::Return {
+        Ok(ast::Statement::Return {
                 token: return_token,
-                return_value: ast::Expression::Identifier {token: Token {typ: TokenType::Illegal, literal: "Illegal".to_string()}, value: "".to_string()},
+                return_value: expression,
             }
         )
     }
 
     fn parse_expression_statement(&mut self) -> Result<ast::Statement, ParseError> {
-        Err(ParseError("Error!".to_string()))
-        // let expression_token = self.cur_token.clone();
-        // // let expression = self.parse_expression()?;
-        // Ok(Statement::Expression {
-        //     token: expression_token,
-        //     expression: expression,
-        // })
+        let expression_token = self.cur_token.clone();
+        let expression = self.parse_expression(Precidence::Lowest)?;
+
+        self.end_line();
+
+        Ok(ast::Statement::Expression {
+            token: expression_token,
+            expression: expression,
+        })
     }
 
-    // fn parse_expression(&mut self) -> Result<ast::Expression, ParseError> {
+    fn parse_expression(&mut self, precidence: Precidence) -> Result<ast::Expression, ParseError> {
+        self.parse_prefix()
+    }
 
-    // }
+    fn parse_prefix(&mut self) -> Result<ast::Expression, ParseError> {
+        println!("Current token: {:?}", self.cur_token);
+         match self.cur_token.typ {
+            TokenType::Identifier => self.parse_identifier_expression(),
+            TokenType::Int => self.parse_integer_expression(),
+            TokenType::Dash | TokenType::Exclam => {
+                let token = self.cur_token.clone();
+                let operator = self.cur_token.literal.chars().nth(0).expect(&format!("Token has no literal!: {:?}", self.cur_token));
+                self.next_token();
+                let right = Box::new(self.parse_expression(Precidence::Prefix)?);
+                Ok(ast::Expression::Prefix { 
+                    token, 
+                    operator, 
+                    right
+                })
+            }
+            _ => Err(ParseError(format!("Unable to parse token in prefix position: {:#?}", self.cur_token)))
+        }
+    }
+
+    fn parse_infix(&mut self) -> Result<ast::Expression, ParseError> {
+        Err(ParseError("Not implemented!".to_string()))
+    }
+
+    fn parse_identifier_expression(&mut self) -> Result<ast::Expression, ParseError> {
+        Ok(ast::Expression::Identifier { 
+            token: self.cur_token.clone(), 
+            value: self.cur_token.literal.clone(),
+        })
+    }
+
+    fn parse_integer_expression(&mut self) -> Result<ast::Expression, ParseError> {
+        Ok(ast::Expression::Integer { 
+            token: self.cur_token.clone(), 
+            value: match self.cur_token.literal.parse::<isize>() {
+                Ok(val) => val,
+                _ => return Err(ParseError(format!("Unable to convert {} to int!", self.cur_token.literal)))
+            }
+        })
+    }
+
+    fn end_line(&mut self) {
+        self.next_token();
+        self.eat_semicolon();
+    }
+
+    fn eat_semicolon(&mut self) {
+        while self.cur_token.typ == TokenType::Semicolon {
+            self.next_token();
+        }
+    }
 }
 
 mod tests {
-    use ast;
-
     use super::*;
 
     #[test]
@@ -150,32 +194,39 @@ mod tests {
 
         let parsed = parser.parse_program().unwrap();
 
-        let expected_identifiers = [
-            "x".to_owned(),
-            "y".to_owned(),
-            "foobar".to_owned()
+        let expected = [
+            construct_let_statement("x".to_string(), 5),
+            construct_let_statement("y".to_string(), 10),
+            construct_let_statement("foobar".to_string(), 838383),
         ];
 
-        assert_eq!(parsed.statements.len(), expected_identifiers.len(), "Expected {} statements, got {}", expected_identifiers.len(), parsed.statements.len());
+        assert_eq!(parsed.statements.len(), expected.len(), "Expected {} statements, got {}", expected.len(), parsed.statements.len());
 
-        for i in 0..expected_identifiers.len() {
-            test_let_statement(&parsed.statements[i], &expected_identifiers[i]);
+        for i in 0..expected.len() {
+            assert_eq!(parsed.statements[i], expected[i]);
         }
     }
 
-    fn test_let_statement(statement: &ast::Statement, expected_name: &str) {
-        // let x: &dyn Any = statement;
-        match statement {
-            Statement::Let { token: _, name: _, value: _ } => {
-                // match value {
-                //     Expression::Identifier { token, value } => {
-
-                //     },
-                //     _ => 
-                // }
-                // assert_eq!(name.value, expected_name);
-            },
-            _ => panic!("Expected let statement with type Integer, got: {statement:#?}")
+    fn construct_let_statement(identifier: String, value: isize) -> ast::Statement {
+        ast::Statement::Let { 
+            token: Token {
+                typ: TokenType::Let, 
+                literal: "let".to_string()
+            }, 
+            name: ast::Expression::Identifier { 
+                token: Token {
+                    typ: TokenType::Identifier,
+                    literal: identifier.to_string()
+                }, 
+                value: identifier.to_string(),
+            }, 
+            value: ast::Expression::Integer { 
+                token: Token {
+                    typ: TokenType::Int,
+                    literal: value.to_string(),
+                },
+                value
+            }
         }
     }
 
@@ -196,7 +247,7 @@ mod tests {
 
         for statement in parsed.statements {
             match statement {
-                Statement::Return { token, return_value: _ } => {
+                ast::Statement::Return { token, return_value: _ } => {
                     assert_eq!(token.typ, TokenType::Return);
                     // assert_eq!(return_value, 5);
                 },
@@ -208,7 +259,7 @@ mod tests {
     #[test]
     fn test_identifier_expression() {
         let program = r#"
-            "foobar;"
+            foobar;
         "#.to_string();
 
         let l = Lexer::new(program);
@@ -218,21 +269,132 @@ mod tests {
 
         assert_eq!(parsed.statements.len(), 1, "Expected 1 statement, got {}", parsed.statements.len());
 
-        match &parsed.statements[0] {
-            Statement::Expression { token, expression } => {
-                assert_eq!(token.typ, TokenType::Identifier);
-                assert_eq!(token.literal, "foobar");
+        let expected = ast::Statement::Expression {
+            token: Token {
+                typ: TokenType::Identifier,
+                literal: "foobar".to_string(),
+            }, 
+            expression: ast::Expression::Identifier { 
+                token: Token {
+                    typ: TokenType::Identifier,
+                    literal: "foobar".to_string(),
+                }, 
+                value: "foobar".to_string()
+            }
+        };
 
-                match expression {
-                    ast::Expression::Identifier { token, value } => {
-                        assert_eq!(token.typ, TokenType::Identifier);
-                        assert_eq!(token.literal, "foobar");
-                        assert_eq!(value, "foobar");
-                    },
-                    _ => panic!("Expected identifier statement, got: {:#?}", expression)
+        assert_eq!(parsed.statements[0], expected);
+    }
+
+    #[test]
+    fn test_prefix_expression() {
+        let program = r#"
+            !5;
+            -15;
+        "#.to_string();
+
+        let l = Lexer::new(program);
+        let mut parser = Parser::new(l);
+
+        let parsed = parser.parse_program().unwrap();
+
+        assert_eq!(parsed.statements.len(), 2, "Expected 2 statement, got {}", parsed.statements.len());
+
+        let expected = vec![
+            ast::Statement::Expression { 
+                token: Token {
+                    typ: TokenType::Exclam,
+                    literal: "!".to_string(),
+                }, 
+                expression: ast::Expression::Prefix { 
+                    token: Token {
+                        typ: TokenType::Exclam,
+                        literal: "!".to_string(),
+                    }, 
+                    operator: '!', 
+                    right: Box::new(ast::Expression::Integer { 
+                        token: Token {
+                            typ: TokenType::Int,
+                            literal: "5".to_string(),
+                        }, 
+                        value: 5,
+                    })
                 }
             },
-            _ => panic!("Expected expression statement, got: {:#?}", parsed.statements[0])
+            ast::Statement::Expression { 
+                token: Token {
+                    typ: TokenType::Dash,
+                    literal: "-".to_string(),
+                }, 
+                expression: ast::Expression::Prefix { 
+                    token: Token {
+                        typ: TokenType::Dash,
+                        literal: "-".to_string(),
+                    }, 
+                    operator: '-', 
+                    right: Box::new(ast::Expression::Integer { 
+                        token: Token {
+                            typ: TokenType::Int,
+                            literal: "15".to_string(),
+                        }, 
+                        value: 15,
+                    })
+                }
+            }
+        ];
+
+        for i in 0..expected.len() {
+                assert_eq!(parsed.statements[i], expected[i]);
         }
     }
+
+    #[test]
+    fn test_integer_literal_expression() {
+        let program = r#"
+            5;
+        "#.to_string();
+
+        let l = Lexer::new(program);
+        let mut parser = Parser::new(l);
+
+        let parsed = parser.parse_program().unwrap();
+
+        assert_eq!(parsed.statements.len(), 1, "Expected 1 statement, got {}", parsed.statements.len());
+
+        let expected = ast::Statement::Expression {
+            token: Token {
+                typ: TokenType::Int,
+                literal: "5".to_string(),
+            },
+            expression: ast::Expression::Integer {
+                token: Token {
+                    typ: TokenType::Int,
+                    literal: "5".to_string(),
+                }, 
+                value: 5
+            }
+        };
+
+        assert_eq!(parsed.statements[0], expected);
+    }
+
 }
+
+
+
+
+
+
+
+
+
+
+
+
+        // println!("Expression: {:#?}", expression);
+
+        // // println!("Current token: {:?}", self.cur_token);
+        
+        // // println!("Current token after cycle: {:?}", self.cur_token);
+        
+        // println!("after eat_semicolon: {:?}", self.cur_token);

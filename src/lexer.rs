@@ -2,7 +2,7 @@
 #[derive(Debug)]
 pub struct LexerError;
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Eq, Hash)]
 pub enum TokenType {
     Illegal,
     Eof,
