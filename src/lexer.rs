@@ -44,6 +44,24 @@ pub struct Token {
     pub literal: String,
 }
 
+impl Token {
+    pub fn new(literal: String) -> Self {
+        Self {
+            typ: match literal.as_str() {
+                "let" => TokenType::Let,
+                "fn" => TokenType::Function,
+                "if" => TokenType::If,
+                "else" => TokenType::Else,
+                "true" => TokenType::True,
+                "false" => TokenType::False,
+                "return" => TokenType::Return,
+                _ => TokenType::Identifier
+            },
+            literal,
+        }
+    }
+}
+
 pub struct Lexer {
     src: String,
     chars: Vec<char>,

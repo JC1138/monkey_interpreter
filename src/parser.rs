@@ -45,7 +45,7 @@ impl Parser {
         
         while self.cur_token.typ != TokenType::Eof {
             let statement = self.parse_statement()?;
-            println!("{statement:#?}");
+            println!("{statement:#?}                   ## parse_program");
             statements.push(statement);
         }
 
@@ -98,6 +98,7 @@ impl Parser {
 
     fn parse_return_statement(&mut self) -> Result<ast::Statement, ParseError> {
         let return_token = self.cur_token.clone();
+        self.next_token();
         let expression = self.parse_expression(Precidence::Lowest)?;
 
         self.end_line();
@@ -179,7 +180,21 @@ impl Parser {
 }
 
 mod tests {
+    use ast::Statement;
+
     use super::*;
+
+    fn do_test(program: String, expected: Vec<Statement>) {
+        let l = Lexer::new(program);
+        let mut parser = Parser::new(l);
+
+        let parsed = parser.parse_program().unwrap();
+
+        assert_eq!(parsed.statements.len(), expected.len(), "Expected {} statements, got {}", expected.len(), parsed.statements.len());
+        for i in 0..expected.len() {
+            assert_eq!(parsed.statements[i], expected[i]);
+        }
+    }
 
     #[test]
     fn basic_test() {
@@ -189,45 +204,13 @@ mod tests {
             let foobar = 838383;
         "#.to_string();
 
-        let l = Lexer::new(program);
-        let mut parser = Parser::new(l);
-
-        let parsed = parser.parse_program().unwrap();
-
-        let expected = [
-            construct_let_statement("x".to_string(), 5),
-            construct_let_statement("y".to_string(), 10),
-            construct_let_statement("foobar".to_string(), 838383),
+        let expected = vec![
+            ast::Statement::construct_let_statement("x".to_string(), 5),
+            ast::Statement::construct_let_statement("y".to_string(), 10),
+            ast::Statement::construct_let_statement("foobar".to_string(), 838383),
         ];
-
-        assert_eq!(parsed.statements.len(), expected.len(), "Expected {} statements, got {}", expected.len(), parsed.statements.len());
-
-        for i in 0..expected.len() {
-            assert_eq!(parsed.statements[i], expected[i]);
-        }
-    }
-
-    fn construct_let_statement(identifier: String, value: isize) -> ast::Statement {
-        ast::Statement::Let { 
-            token: Token {
-                typ: TokenType::Let, 
-                literal: "let".to_string()
-            }, 
-            name: ast::Expression::Identifier { 
-                token: Token {
-                    typ: TokenType::Identifier,
-                    literal: identifier.to_string()
-                }, 
-                value: identifier.to_string(),
-            }, 
-            value: ast::Expression::Integer { 
-                token: Token {
-                    typ: TokenType::Int,
-                    literal: value.to_string(),
-                },
-                value
-            }
-        }
+        
+        do_test(program, expected)
     }
 
     #[test]
@@ -238,22 +221,13 @@ mod tests {
             return 10;
         "#.to_string();
 
-        let l = Lexer::new(program);
-        let mut parser = Parser::new(l);
+        let expected = vec![
+            ast::Statement::construct_return_statement(ast::Expression::construct_integer_expression(5)),
+            ast::Statement::construct_return_statement(ast::Expression::construct_identifier_expression("asdf")),
+            ast::Statement::construct_return_statement(ast::Expression::construct_integer_expression(10)),
+        ];
 
-        let parsed = parser.parse_program().unwrap();
-
-        assert_eq!(parsed.statements.len(), 3, "Expected 3 statements, got {}", parsed.statements.len());
-
-        for statement in parsed.statements {
-            match statement {
-                ast::Statement::Return { token, return_value: _ } => {
-                    assert_eq!(token.typ, TokenType::Return);
-                    // assert_eq!(return_value, 5);
-                },
-                _ => panic!("Expected return statement, got: {statement:#?}")
-            }
-        }
+        do_test(program, expected);
     }
 
     #[test]
@@ -262,28 +236,16 @@ mod tests {
             foobar;
         "#.to_string();
 
-        let l = Lexer::new(program);
-        let mut parser = Parser::new(l);
-
-        let parsed = parser.parse_program().unwrap();
-
-        assert_eq!(parsed.statements.len(), 1, "Expected 1 statement, got {}", parsed.statements.len());
-
-        let expected = ast::Statement::Expression {
-            token: Token {
-                typ: TokenType::Identifier,
-                literal: "foobar".to_string(),
-            }, 
-            expression: ast::Expression::Identifier { 
-                token: Token {
+        let expected = vec![
+            ast::Statement::construct_expression_statement(Token {
                     typ: TokenType::Identifier,
                     literal: "foobar".to_string(),
-                }, 
-                value: "foobar".to_string()
-            }
-        };
+                },
+                ast::Expression::construct_identifier_expression("foobar"),
+            ),
+        ];
 
-        assert_eq!(parsed.statements[0], expected);
+        do_test(program, expected);
     }
 
     #[test]
@@ -293,59 +255,22 @@ mod tests {
             -15;
         "#.to_string();
 
-        let l = Lexer::new(program);
-        let mut parser = Parser::new(l);
-
-        let parsed = parser.parse_program().unwrap();
-
-        assert_eq!(parsed.statements.len(), 2, "Expected 2 statement, got {}", parsed.statements.len());
-
         let expected = vec![
-            ast::Statement::Expression { 
-                token: Token {
+            ast::Statement::construct_expression_statement(Token {
                     typ: TokenType::Exclam,
                     literal: "!".to_string(),
-                }, 
-                expression: ast::Expression::Prefix { 
-                    token: Token {
-                        typ: TokenType::Exclam,
-                        literal: "!".to_string(),
-                    }, 
-                    operator: '!', 
-                    right: Box::new(ast::Expression::Integer { 
-                        token: Token {
-                            typ: TokenType::Int,
-                            literal: "5".to_string(),
-                        }, 
-                        value: 5,
-                    })
-                }
-            },
-            ast::Statement::Expression { 
-                token: Token {
+                },
+                ast::Expression::construct_prefix_expression("!", ast::Expression::construct_integer_expression(5))
+            ),
+            ast::Statement::construct_expression_statement(Token {
                     typ: TokenType::Dash,
                     literal: "-".to_string(),
-                }, 
-                expression: ast::Expression::Prefix { 
-                    token: Token {
-                        typ: TokenType::Dash,
-                        literal: "-".to_string(),
-                    }, 
-                    operator: '-', 
-                    right: Box::new(ast::Expression::Integer { 
-                        token: Token {
-                            typ: TokenType::Int,
-                            literal: "15".to_string(),
-                        }, 
-                        value: 15,
-                    })
-                }
-            }
+                },
+                ast::Expression::construct_prefix_expression("-", ast::Expression::construct_integer_expression(15))
+            ),
         ];
 
-        for i in 0..expected.len() {
-                assert_eq!(parsed.statements[i], expected[i]);
-        }
+        do_test(program, expected);
     }
 
     #[test]
@@ -354,28 +279,16 @@ mod tests {
             5;
         "#.to_string();
 
-        let l = Lexer::new(program);
-        let mut parser = Parser::new(l);
-
-        let parsed = parser.parse_program().unwrap();
-
-        assert_eq!(parsed.statements.len(), 1, "Expected 1 statement, got {}", parsed.statements.len());
-
-        let expected = ast::Statement::Expression {
-            token: Token {
-                typ: TokenType::Int,
-                literal: "5".to_string(),
-            },
-            expression: ast::Expression::Integer {
-                token: Token {
+        let expected = vec![
+            ast::Statement::construct_expression_statement(Token {
                     typ: TokenType::Int,
                     literal: "5".to_string(),
                 }, 
-                value: 5
-            }
-        };
+                ast::Expression::construct_integer_expression(5),
+            ),
+        ];
 
-        assert_eq!(parsed.statements[0], expected);
+        do_test(program, expected);
     }
 
 }
