@@ -45,20 +45,86 @@ pub struct Token {
 }
 
 impl Token {
-    pub fn new(literal: String) -> Self {
-        Self {
-            typ: match literal.as_str() {
-                "let" => TokenType::Let,
-                "fn" => TokenType::Function,
-                "if" => TokenType::If,
-                "else" => TokenType::Else,
-                "true" => TokenType::True,
-                "false" => TokenType::False,
-                "return" => TokenType::Return,
-                _ => TokenType::Identifier
-            },
-            literal,
-        }
+    pub fn new_illegal() -> Self {
+        Self { typ: TokenType::Illegal, literal: "illegal".to_string() }
+    }
+    pub fn new_eof() -> Self {
+        Self { typ: TokenType::Eof, literal: "".to_string() }
+    }
+    pub fn new_identifier(identifier: &str) -> Self {
+        Self { typ: TokenType::Identifier, literal: identifier.to_string() }
+    }
+    pub fn new_int(value: &str) -> Self {
+        Self { typ: TokenType::Int, literal: value.to_string() }
+    }
+    pub fn new_assign() -> Self {
+        Self { typ: TokenType::Assign, literal: "=".to_string() }
+    }
+    pub fn new_plus() -> Self {
+        Self { typ: TokenType::Plus, literal: "+".to_string() }
+    }
+    pub fn new_comma() -> Self {
+        Self { typ: TokenType::Comma, literal: ",".to_string() }
+    }
+    pub fn new_semicolon() -> Self {
+        Self { typ: TokenType::Semicolon, literal: ";".to_string() }
+    }
+    pub fn new_l_paren() -> Self {
+        Self { typ: TokenType::LParen, literal: "(".to_string() }
+    }
+    pub fn new_r_paren() -> Self {
+        Self { typ: TokenType::RParen, literal: ")".to_string() }
+    }
+    pub fn new_l_brace() -> Self {
+        Self { typ: TokenType::LBrace, literal: "{".to_string() }
+    }
+    pub fn new_r_brace() -> Self {
+        Self { typ: TokenType::RBrace, literal: "}".to_string() }
+    }
+    pub fn new_dash() -> Self {
+        Self { typ: TokenType::Dash, literal: "-".to_string() }
+    }
+    pub fn new_f_slash() -> Self {
+        Self { typ: TokenType::FSlash, literal: "/".to_string() }
+    }
+    pub fn new_star() -> Self {
+        Self { typ: TokenType::Star, literal: "*".to_string() }
+    }
+    pub fn new_g_t() -> Self {
+        Self { typ: TokenType::GT, literal: ">".to_string() }
+    }
+    pub fn new_l_t() -> Self {
+        Self { typ: TokenType::LT, literal: "<".to_string() }
+    }
+    pub fn new_exclam() -> Self {
+        Self { typ: TokenType::Exclam, literal: "!".to_string() }
+    }
+    pub fn new_eq() -> Self {
+        Self { typ: TokenType::Eq, literal: "==".to_string() }
+    }
+    pub fn new_n_eq() -> Self {
+        Self { typ: TokenType::NEq, literal: "!=".to_string() }
+    }
+    pub fn new_function() -> Self {
+        Self { typ: TokenType::Function, literal: "fn".to_string() }
+    }
+    pub fn new_let() -> Self {
+        Self { typ: TokenType::Let, literal: "let".to_string() }
+    }
+    pub fn new_true() -> Self {
+        Self { typ: TokenType::True, literal: "true".to_string() }
+    }
+    pub fn new_false() -> Self {
+        Self { typ: TokenType::False, literal: "false".to_string() }
+    }
+    pub fn new_if() -> Self {
+        Self { typ: TokenType::If, literal: "if".to_string() }
+    }
+    pub fn new_else() -> Self {
+        Self { typ: TokenType::Else, literal: "else".to_string() }
+    }
+    pub fn new_return() -> Self {
+        Self { typ: TokenType::Return, literal: "return".to_string() }
     }
 }
 
@@ -96,57 +162,52 @@ impl Lexer {
             '=' => {
                 if self.peek_char() == '=' {
                     self.read_char();
-                    Token { typ: TokenType::Eq, literal: "==".to_string()}
+                    Token::new_eq()
                 }else {
-                    Self::get_single_char_token(TokenType::Assign, c)
+                    Token::new_assign()
                 }
             },
-            '+' => Self::get_single_char_token(TokenType::Plus, c),
-            ',' => Self::get_single_char_token(TokenType::Comma, c),
-            ';' => Self::get_single_char_token(TokenType::Semicolon, c),
-            '(' => Self::get_single_char_token(TokenType::LParen, c),
-            ')' => Self::get_single_char_token(TokenType::RParen, c),
-            '{' => Self::get_single_char_token(TokenType::LBrace, c),
-            '}' => Self::get_single_char_token(TokenType::RBrace, c),
-            '-' => Self::get_single_char_token(TokenType::Dash, c),
-            '/' => Self::get_single_char_token(TokenType::FSlash, c),
-            '*' => Self::get_single_char_token(TokenType::Star, c),
-            '<' => Self::get_single_char_token(TokenType::LT, c),
-            '>' => Self::get_single_char_token(TokenType::GT, c),
+            '+' => Token::new_plus(), // Self::get_single_char_token(TokenType::Plus, c),
+            ',' => Token::new_comma(), // Self::get_single_char_token(TokenType::Comma, c),
+            ';' => Token::new_semicolon(), // Self::get_single_char_token(TokenType::Semicolon, c),
+            '(' => Token::new_l_paren(), // Self::get_single_char_token(TokenType::LParen, c),
+            ')' => Token::new_r_paren(), // Self::get_single_char_token(TokenType::RParen, c),
+            '{' => Token::new_l_brace(), // Self::get_single_char_token(TokenType::LBrace, c),
+            '}' => Token::new_r_brace(), // Self::get_single_char_token(TokenType::RBrace, c),
+            '-' => Token::new_dash(), // Self::get_single_char_token(TokenType::Dash, c),
+            '/' => Token::new_f_slash(), // Self::get_single_char_token(TokenType::FSlash, c),
+            '*' => Token::new_star(), // Self::get_single_char_token(TokenType::Star, c),
+            '<' => Token::new_l_t(), // Self::get_single_char_token(TokenType::LT, c),
+            '>' => Token::new_g_t(), // Self::get_single_char_token(TokenType::GT, c),
             '!' => {
                 if self.peek_char() == '=' {
                     self.read_char();
-                    Token { typ: TokenType::NEq, literal: "!=".to_string()}
+                    Token::new_n_eq()
                 }else {
-                    Self::get_single_char_token(TokenType::Exclam, c)
+                    Token::new_exclam()
                 }
             },
 
             c if Self::is_letter(c) => {
-                let ident = self.read_identifier();
-
-                return Token {
-                    typ: match ident.as_str() {
-                        "let" => TokenType::Let,
-                        "fn" => TokenType::Function,
-                        "if" => TokenType::If,
-                        "else" => TokenType::Else,
-                        "true" => TokenType::True,
-                        "false" => TokenType::False,
-                        "return" => TokenType::Return,
-                        _ => TokenType::Identifier
-                    },
-                    literal: ident,
-                };
+                return match self.read_identifier().as_str() {
+                    "let" => Token::new_let(),
+                    "fn" => Token::new_function(),
+                    "if" => Token::new_if(),
+                    "else" => Token::new_else(),
+                    "true" => Token::new_true(),
+                    "false" => Token::new_false(),
+                    "return" => Token::new_return(),
+                    i @ _ => Token::new_identifier(i)
+                }
             },
 
             c if Self::is_digit(c) => {
-                return Token{ typ: TokenType::Int, literal: self.read_int() };
+                return Token::new_int(&self.read_int())
             },
 
-            '\0' => Token { typ: TokenType::Eof, literal: "".to_string() },
+            '\0' => Token::new_eof(),
             
-            _ => Token { typ: TokenType::Illegal, literal: "".to_string() }
+            _ => Token::new_illegal(),
         };
 
         self.read_char();
@@ -174,10 +235,6 @@ impl Lexer {
         }else {
             self.chars[new_pos]
         }
-    }
-
-    fn get_single_char_token(token_type: TokenType, c: char) -> Token {
-        Token { typ: token_type, literal: c.to_string() }
     }
 
     fn read_match(&mut self, matcher: fn(char) -> bool) -> String {
@@ -345,7 +402,7 @@ mod tests {
 
         for expected in expected {
             let token = lexer.next_token();
-
+            println!("{}: {token:?}", lexer.ch);
             assert_eq!(expected.0, token.typ, "Expected type {:?}, got {:?}. Token: {:?}", expected.0, token.typ, token );
             assert_eq!(expected.1, token.literal, "Expected literal {}, got {}. Token: {:?}", expected.1, token.literal, token);
         }

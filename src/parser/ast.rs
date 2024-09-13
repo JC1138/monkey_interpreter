@@ -21,33 +21,24 @@ pub enum Expression {
 impl Expression {
     pub fn construct_identifier_expression(identifier: &str) -> Self {
         Expression::Identifier {
-            token: Token {
-                typ: TokenType::Identifier,
-                literal: identifier.to_string(),
-            },
+            token: Token::new_identifier(identifier),
             value: identifier.to_string()
         }
     }
 
     pub fn construct_integer_expression(value: isize) -> Self {
         Expression::Integer { 
-            token: Token {
-                typ: TokenType::Int,
-                literal: value.to_string(),
-            }, 
+            token: Token::new_int(&value.to_string()), 
             value
         }
     }
 
     pub fn construct_prefix_expression(operator: &str, right: Self) -> Self {
         Expression::Prefix { 
-            token: Token {
-                typ: match operator {
-                    "-" => TokenType::Dash,
-                    "!" => TokenType::Exclam,
-                    _ => panic!("{}", format!("Cannot use {operator} as a prefix!"))
-                },
-                literal: operator.to_string(),
+            token: match operator {
+                "-" => Token::new_dash(),
+                "!" => Token::new_exclam(),
+                _ => panic!("{}", format!("Cannot use {operator} as a prefix!"))
             }, 
             operator: operator.chars().nth(0).unwrap(), 
             right: Box::new(right)

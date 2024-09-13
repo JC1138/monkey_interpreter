@@ -237,12 +237,7 @@ mod tests {
         "#.to_string();
 
         let expected = vec![
-            ast::Statement::construct_expression_statement(Token {
-                    typ: TokenType::Identifier,
-                    literal: "foobar".to_string(),
-                },
-                ast::Expression::construct_identifier_expression("foobar"),
-            ),
+            ast::Statement::construct_expression_statement(Token::new_identifier("foobar"), ast::Expression::construct_identifier_expression("foobar")),
         ];
 
         do_test(program, expected);
@@ -256,18 +251,8 @@ mod tests {
         "#.to_string();
 
         let expected = vec![
-            ast::Statement::construct_expression_statement(Token {
-                    typ: TokenType::Exclam,
-                    literal: "!".to_string(),
-                },
-                ast::Expression::construct_prefix_expression("!", ast::Expression::construct_integer_expression(5))
-            ),
-            ast::Statement::construct_expression_statement(Token {
-                    typ: TokenType::Dash,
-                    literal: "-".to_string(),
-                },
-                ast::Expression::construct_prefix_expression("-", ast::Expression::construct_integer_expression(15))
-            ),
+            ast::Statement::construct_expression_statement(Token::new_exclam(), ast::Expression::construct_prefix_expression("!", ast::Expression::construct_integer_expression(5))),
+            ast::Statement::construct_expression_statement(Token::new_dash(), ast::Expression::construct_prefix_expression("-", ast::Expression::construct_integer_expression(15))),
         ];
 
         do_test(program, expected);
@@ -280,12 +265,7 @@ mod tests {
         "#.to_string();
 
         let expected = vec![
-            ast::Statement::construct_expression_statement(Token {
-                    typ: TokenType::Int,
-                    literal: "5".to_string(),
-                }, 
-                ast::Expression::construct_integer_expression(5),
-            ),
+            ast::Statement::construct_expression_statement(Token::new_int("5"), ast::Expression::construct_integer_expression(5)),
         ];
 
         do_test(program, expected);
