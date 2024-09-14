@@ -1,4 +1,4 @@
-use ast::Statement;
+use ast::{Expression, Statement};
 
 use crate::lexer::{Lexer, token::{Token, TokenType}};
 
@@ -161,6 +161,7 @@ impl Parser {
             TokenType::Dash | TokenType::Exclam => self.parse_prefix_expression(),
             TokenType::LParen => self.parse_grouped_expression(),
             TokenType::If => self.parse_if_expression(),
+            TokenType::Function => self.parse_fn_expression(),
             _ => Err(ParseError(format!("Unable to parse token in prefix position: {:?}", self.cur_token)))
         }
     }
@@ -256,6 +257,21 @@ impl Parser {
         })
     }
 
+    fn parse_fn_expression(&mut self) -> Result<ast::Expression, ParseError> {
+        let fn_token = self.cur_token.clone();
+
+        self.expect_next(TokenType::LParen)?;
+        let params = self.parse_fn_paramaters()?;
+        self.expect_next(TokenType::LBrace);
+        let body = self.parse_block_statement()?;
+
+        Ok(ast::Expression::Function { 
+            token: fn_token, 
+            params, 
+            body: Box::new(body)
+        })
+    }
+
     fn parse_block_statement(&mut self) -> Result<ast::Statement, ParseError> {
         let l_brace_token = self.cur_token.clone();
         let mut statements: Vec<Statement> = Vec::new();
@@ -270,6 +286,32 @@ impl Parser {
             token: l_brace_token, 
             statements
          })
+    }
+
+    fn parse_fn_paramaters(&mut self) -> Result<Vec<ast::Expression>, ParseError> {
+        let mut params: Vec<Expression> = Vec::new();
+
+        if self.peek_token.typ == TokenType::LParen {
+            self.next_token();
+            return Ok(params)
+        }
+
+        self.next_token();
+
+        while self.cur_token.typ == TokenType::Identifier {
+            println!("{:?}", self.cur_token);
+            params.push(ast::Expression::construct_identifier_expression(&self.cur_token.literal));
+            if self.peek_token.typ == TokenType::Comma {
+                self.next_token();
+                self.next_token();
+            } else {
+                break;
+            }
+        }
+
+        self.expect_next(TokenType::RParen)?;
+
+        Ok(params)
     }
 
     fn parse_infix_expression(&mut self, left: ast::Expression) -> Result<ast::Expression, ParseError> {

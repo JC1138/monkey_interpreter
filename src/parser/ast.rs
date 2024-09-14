@@ -31,6 +31,11 @@ pub enum Expression {
         condition: Box<Expression>,
         consequence: Box<Statement>, // Block statement
         alternative: Option<Box<Statement>>,
+    },
+    Function {
+        token: Token, // 'fn'
+        params: Vec<Expression>,
+        body: Box<Statement> // Block statement
     }
 }
 
@@ -121,7 +126,15 @@ impl Expression {
                 }
 
                 out
-            }
+            },
+            Self::Function { token, params, body } => {
+                let params = params
+                                        .iter()
+                                        .map(|param| param.dbg())
+                                        .collect::<Vec<String>>()
+                                        .join(",");
+                format!("{}({}) {}", token.literal, params, body.dbg())
+            } 
         }
     }
 }
