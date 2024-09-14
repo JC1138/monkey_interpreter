@@ -1,6 +1,6 @@
 use std::io::{self, Write};
 
-use monkey_interpreter::lexer::{Lexer, TokenType};
+use monkey_interpreter::{lexer::Lexer, parser::Parser};
 
 fn main() {
     loop {
@@ -13,14 +13,21 @@ fn main() {
     
         let input = input.trim();
     
-        let mut lexer = Lexer::new(input.to_string());
+        let lexer = Lexer::new(input.to_string());
+
+        let mut parser = Parser::new(lexer);
     
-        let mut token = lexer.next_token();
+        // let mut token = lexer.next_token();
+
+        match parser.parse_program() {
+            Ok(program) => {
+                for statement in &program.statements {
+                    statement.dbg();
+                }
     
-        while token.typ != TokenType::Eof {
-            println!("{token:?}");
-            token = lexer.next_token();
+                println!("{program:#?}")
+            },
+            Err(err) => println!("{err:?}")
         }
     }
-
 }

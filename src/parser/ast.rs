@@ -1,7 +1,7 @@
 use std::fmt::Debug;
-use crate::lexer::{Token, TokenType};
+use crate::lexer::token::{Token, TokenType};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Expression {
     Identifier {
         token: Token,
@@ -11,10 +11,20 @@ pub enum Expression {
         token: Token,
         value: isize,
     },
+    Boolean {
+        token: Token,
+        value: bool,
+    },
     Prefix {
         token: Token,
-        operator: char,
+        operator: String,
         right: Box<Expression>,
+    },
+    Infix {
+        token: Token, // The operator token
+        left: Box<Expression>,
+        operator: String,
+        right: Box<Expression>
     }
 }
 
@@ -28,8 +38,15 @@ impl Expression {
 
     pub fn construct_integer_expression(value: isize) -> Self {
         Expression::Integer { 
-            token: Token::new_int(&value.to_string()), 
+            token: Token::new_int_i(value), 
             value
+        }
+    }
+
+    pub fn construct_boolean_expression(value: bool) -> Self {
+        Expression::Boolean { 
+            token: if value {Token::new_true()} else {Token::new_false()}, 
+            value,
         }
     }
 
@@ -40,15 +57,56 @@ impl Expression {
                 "!" => Token::new_exclam(),
                 _ => panic!("{}", format!("Cannot use {operator} as a prefix!"))
             }, 
-            operator: operator.chars().nth(0).unwrap(), 
+            operator: operator.to_string(), 
             right: Box::new(right)
+        }
+    }
+
+    pub fn construct_infix_expression(operator: &str, left: Self, right: Self) -> Self {
+        Expression::Infix { 
+            token: match operator {
+                "+" => Token::new_plus(),
+                "-" => Token::new_dash(),
+                "*" => Token::new_star(),
+                "/" => Token::new_f_slash(),
+                ">" => Token::new_g_t(),
+                "<" => Token::new_l_t(),
+                "==" => Token::new_eq(),
+                "!=" => Token::new_n_eq(),
+                _ => panic!("{}", format!("Cannot use {operator} as a prefix!"))
+            }, 
+            left: Box::new(left), 
+            operator: operator.to_string(), 
+            right: Box::new(right),
+        }
+    }
+
+    pub fn dbg(&self) {
+        match self {
+            Self::Identifier { value, .. } => print!("{value}"),
+            Self::Integer { value, .. } => print!("{value}"),
+            Self::Boolean { value, .. } => print!("{value}"),
+            Self::Prefix { operator, right, .. } => {
+                print!("({operator}");
+                right.dbg();
+                print!(")")
+            },
+            Self::Infix { left, operator, right, .. } => {
+                print!("(");
+                left.dbg();
+                print!(" ");
+                print!("{operator}");
+                print!(" ");
+                right.dbg();
+                print!(")")
+            }
         }
     }
 }
 
 #[derive(Debug, PartialEq)]
 pub enum Statement {
-    Expression {
+    ExpressionStatement {
         token: Token,
         expression: Expression,
     },
@@ -66,7 +124,7 @@ pub enum Statement {
 impl Statement {
 
     pub fn construct_expression_statement(first_token: Token, expression: Expression) -> Self {
-        Self::Expression { token: first_token, expression }
+        Self::ExpressionStatement { token: first_token, expression }
     }
 
     pub fn construct_let_statement(identifier: String, value: isize) -> Self {
@@ -88,5 +146,23 @@ impl Statement {
             },
             return_value
         }
+    }
+
+    pub fn dbg(&self) {
+        match self {
+            Self::Let { token, name, value } => {
+                print!("{} ", token.literal);
+                name.dbg();
+                print!(" = ");
+                value.dbg();
+            },
+            Self::Return { token, return_value } => {
+                print!("{} ", token.literal);
+                return_value.dbg();
+            },
+            Self::ExpressionStatement { expression, .. } => expression.dbg(),
+        };
+
+        println!();
     }
 }

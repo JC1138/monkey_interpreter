@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 #[derive(Debug)]
 struct Node<T>
 where
@@ -9,6 +10,7 @@ where
     children: Vec<usize>,
 }
 
+#[allow(dead_code)]
 impl<T> Node<T>
 where
     T: PartialEq
@@ -23,6 +25,7 @@ where
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Default)]
 struct ArenaTree<T> 
 where
@@ -31,11 +34,12 @@ where
     arena: Vec<Node<T>>,
 }
 
+#[allow(dead_code)]
 impl<T> ArenaTree<T>
 where 
     T: PartialEq
 {
-    fn insert(&mut self, parent: usize, child: usize) {
+    fn insert(&mut self, _parent: usize, _child: usize) {
         // self.
     }
 }

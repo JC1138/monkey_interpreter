@@ -1,16 +1,19 @@
-use crate::lexer::{Lexer, Token, TokenType};
+use crate::lexer::{Lexer, token::{Token, TokenType}};
 
 mod arena_tree;
 mod ast;
 
+#[allow(dead_code)]
 #[derive(Debug)]
-struct ParseError(String);
+pub struct ParseError(String);
 
-struct Program {
+#[derive(Debug)]
+pub struct Program {
     pub statements: Vec<ast::Statement>
 }
 
-enum Precidence {
+#[derive(Debug, PartialEq, PartialOrd)]
+enum Precedence {
     Lowest = 0,
     EqualTo = 1, // ==
     GTLT = 2, // >, <
@@ -20,7 +23,19 @@ enum Precidence {
     Call = 6, // x()
 }
 
-struct Parser {
+impl Precedence {
+    fn get_precedence(token_type: TokenType) -> Self {
+        match token_type {
+            TokenType::Eq | TokenType::NEq => Precedence::EqualTo,
+            TokenType::LT | TokenType::GT => Precedence::GTLT,
+            TokenType::Plus | TokenType::Dash => Precedence::Sum,
+            TokenType::FSlash | TokenType::Star => Precedence::Mult,
+            _ => Precedence::Lowest,
+        }
+    }
+}
+
+pub struct Parser {
     lexer: Lexer,
     cur_token: Token,
     peek_token: Token,
@@ -40,12 +55,12 @@ impl Parser {
         self.cur_token = std::mem::replace(&mut self.peek_token, self.lexer.next_token());
     }
 
-    fn parse_program(&mut self) -> Result<Program, ParseError> {
+    pub fn parse_program(&mut self) -> Result<Program, ParseError> {
         let mut statements: Vec<ast::Statement> = Vec::new();
         
         while self.cur_token.typ != TokenType::Eof {
             let statement = self.parse_statement()?;
-            println!("{statement:#?}                   ## parse_program");
+            // println!("{statement:#?}                   ## parse_program");
             statements.push(statement);
         }
 
@@ -84,7 +99,7 @@ impl Parser {
 
         self.next_token();
 
-        let expression = self.parse_expression(Precidence::Lowest)?;
+        let expression = self.parse_expression(Precedence::Lowest)?;
 
         self.end_line();
 
@@ -99,7 +114,7 @@ impl Parser {
     fn parse_return_statement(&mut self) -> Result<ast::Statement, ParseError> {
         let return_token = self.cur_token.clone();
         self.next_token();
-        let expression = self.parse_expression(Precidence::Lowest)?;
+        let expression = self.parse_expression(Precedence::Lowest)?;
 
         self.end_line();
 
@@ -112,42 +127,49 @@ impl Parser {
 
     fn parse_expression_statement(&mut self) -> Result<ast::Statement, ParseError> {
         let expression_token = self.cur_token.clone();
-        let expression = self.parse_expression(Precidence::Lowest)?;
+        let expression = self.parse_expression(Precedence::Lowest)?;
 
         self.end_line();
 
-        Ok(ast::Statement::Expression {
+        Ok(ast::Statement::ExpressionStatement {
             token: expression_token,
             expression: expression,
         })
     }
 
-    fn parse_expression(&mut self, precidence: Precidence) -> Result<ast::Expression, ParseError> {
-        self.parse_prefix()
+    fn parse_expression(&mut self, precedence: Precedence) -> Result<ast::Expression, ParseError> {
+        let mut left = self.parse_prefix()?;
+
+        while self.peek_token.typ != TokenType::Semicolon && precedence < Precedence::get_precedence(self.peek_token.typ) { // works with if ??
+            match self.parse_infix(left.clone())? {
+                Some(right) => left = right,
+                None => return Ok(left),
+            }
+        }
+
+        Ok(left)
     }
 
     fn parse_prefix(&mut self) -> Result<ast::Expression, ParseError> {
-        println!("Current token: {:?}", self.cur_token);
+        // println!("Current token: {:?}", self.cur_token);
          match self.cur_token.typ {
             TokenType::Identifier => self.parse_identifier_expression(),
             TokenType::Int => self.parse_integer_expression(),
-            TokenType::Dash | TokenType::Exclam => {
-                let token = self.cur_token.clone();
-                let operator = self.cur_token.literal.chars().nth(0).expect(&format!("Token has no literal!: {:?}", self.cur_token));
-                self.next_token();
-                let right = Box::new(self.parse_expression(Precidence::Prefix)?);
-                Ok(ast::Expression::Prefix { 
-                    token, 
-                    operator, 
-                    right
-                })
-            }
-            _ => Err(ParseError(format!("Unable to parse token in prefix position: {:#?}", self.cur_token)))
+            TokenType::True | TokenType::False => self.parse_boolean_expression(),
+            TokenType::Dash | TokenType::Exclam => self.parse_prefix_expression(),
+            TokenType::LParen => self.parse_grouped_expression(),
+            _ => Err(ParseError(format!("Unable to parse token in prefix position: {:?}", self.cur_token)))
         }
     }
 
-    fn parse_infix(&mut self) -> Result<ast::Expression, ParseError> {
-        Err(ParseError("Not implemented!".to_string()))
+    fn parse_infix(&mut self, left: ast::Expression) -> Result<Option<ast::Expression>, ParseError> {
+        match self.peek_token.typ {
+            TokenType::Eq | TokenType::NEq | TokenType::LT | TokenType::GT | TokenType::Plus | TokenType::Dash | TokenType::FSlash | TokenType::Star => {
+                self.next_token();
+                Ok(Some(self.parse_infix_expression(left)?))
+            },
+            _ => Ok(None),
+        }
     }
 
     fn parse_identifier_expression(&mut self) -> Result<ast::Expression, ParseError> {
@@ -164,6 +186,58 @@ impl Parser {
                 Ok(val) => val,
                 _ => return Err(ParseError(format!("Unable to convert {} to int!", self.cur_token.literal)))
             }
+        })
+    }
+
+    fn parse_boolean_expression(&mut self) -> Result<ast::Expression, ParseError> {
+        Ok(ast::Expression::Boolean { 
+            token: self.cur_token.clone(), 
+            value: match self.cur_token.literal.as_str() {
+                "true" => true,
+                "false" => false,
+                _ => return Err(ParseError(format!("Unable to convert {} to bool!", self.cur_token.literal)))
+            }
+        })
+    }
+
+    fn parse_prefix_expression(&mut self) -> Result<ast::Expression, ParseError> {
+        let token = self.cur_token.clone();
+        let operator = self.cur_token.literal.to_string();
+        self.next_token();
+        let right = Box::new(self.parse_expression(Precedence::Prefix)?);
+        Ok(ast::Expression::Prefix { 
+            token, 
+            operator, 
+            right
+        })
+    }
+
+    fn parse_grouped_expression(&mut self) -> Result<ast::Expression, ParseError> {
+        self.next_token();
+        let expression = self.parse_expression(Precedence::Lowest)?;
+
+        self.next_token();
+        
+        if self.cur_token.typ != TokenType::RParen {
+            return Err(ParseError(format!("Expected ')', got {:?}", self.cur_token)))
+        }
+
+        Ok(expression)
+    }
+
+    fn parse_infix_expression(&mut self, left: ast::Expression) -> Result<ast::Expression, ParseError> {
+        let operator_token = self.cur_token.clone();
+        let precedence = Precedence::get_precedence(operator_token.typ);
+
+        self.next_token();
+
+        let right = self.parse_expression(precedence)?;
+
+        Ok(ast::Expression::Infix { 
+            operator: operator_token.literal.to_string(),
+            token: operator_token,
+            left: Box::new(left),
+            right: Box::new(right)
         })
     }
 
@@ -184,6 +258,7 @@ mod tests {
 
     use super::*;
 
+    #[allow(dead_code)]
     fn do_test(program: String, expected: Vec<Statement>) {
         let l = Lexer::new(program);
         let mut parser = Parser::new(l);
@@ -253,6 +328,33 @@ mod tests {
         let expected = vec![
             ast::Statement::construct_expression_statement(Token::new_exclam(), ast::Expression::construct_prefix_expression("!", ast::Expression::construct_integer_expression(5))),
             ast::Statement::construct_expression_statement(Token::new_dash(), ast::Expression::construct_prefix_expression("-", ast::Expression::construct_integer_expression(15))),
+        ];
+
+        do_test(program, expected);
+    }
+
+    #[test]
+    fn test_infix_expression() {
+        let program = r#"
+            5 + 20;
+            5 - 20;
+            5 * 20;
+            5 / 20;
+            5 > 20;
+            5 < 20;
+            5 == 20;
+            5 != 20;
+        "#.to_string();
+
+        let expected = vec![
+            ast::Statement::construct_expression_statement(Token::new_int_i(5), ast::Expression::construct_infix_expression("+", ast::Expression::construct_integer_expression(5), ast::Expression::construct_integer_expression(20))),
+            ast::Statement::construct_expression_statement(Token::new_int_i(5), ast::Expression::construct_infix_expression("-", ast::Expression::construct_integer_expression(5), ast::Expression::construct_integer_expression(20))),
+            ast::Statement::construct_expression_statement(Token::new_int_i(5), ast::Expression::construct_infix_expression("*", ast::Expression::construct_integer_expression(5), ast::Expression::construct_integer_expression(20))),
+            ast::Statement::construct_expression_statement(Token::new_int_i(5), ast::Expression::construct_infix_expression("/", ast::Expression::construct_integer_expression(5), ast::Expression::construct_integer_expression(20))),
+            ast::Statement::construct_expression_statement(Token::new_int_i(5), ast::Expression::construct_infix_expression(">", ast::Expression::construct_integer_expression(5), ast::Expression::construct_integer_expression(20))),
+            ast::Statement::construct_expression_statement(Token::new_int_i(5), ast::Expression::construct_infix_expression("<", ast::Expression::construct_integer_expression(5), ast::Expression::construct_integer_expression(20))),
+            ast::Statement::construct_expression_statement(Token::new_int_i(5), ast::Expression::construct_infix_expression("==", ast::Expression::construct_integer_expression(5), ast::Expression::construct_integer_expression(20))),
+            ast::Statement::construct_expression_statement(Token::new_int_i(5), ast::Expression::construct_infix_expression("!=", ast::Expression::construct_integer_expression(5), ast::Expression::construct_integer_expression(20))),
         ];
 
         do_test(program, expected);
