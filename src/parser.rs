@@ -241,11 +241,18 @@ impl Parser {
         
         let consequence = self.parse_block_statement()?;
 
+        let mut alternative = None;
+        if self.peek_token.typ == TokenType::Else {
+            self.next_token();
+            self.expect_next(TokenType::LBrace)?;
+            alternative = Some(Box::new(self.parse_block_statement()?));
+        }
+
         Ok(ast::Expression::If { 
             token: if_token, 
             condition: Box::new(condition), 
             consequence: Box::new(consequence), 
-            alternative: None 
+            alternative,
         })
     }
 
