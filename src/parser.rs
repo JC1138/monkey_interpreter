@@ -1,3 +1,5 @@
+use ast::Statement;
+
 use crate::lexer::{Lexer, token::{Token, TokenType}};
 
 mod arena_tree;
@@ -158,6 +160,7 @@ impl Parser {
             TokenType::True | TokenType::False => self.parse_boolean_expression(),
             TokenType::Dash | TokenType::Exclam => self.parse_prefix_expression(),
             TokenType::LParen => self.parse_grouped_expression(),
+            TokenType::If => self.parse_if_expression(),
             _ => Err(ParseError(format!("Unable to parse token in prefix position: {:?}", self.cur_token)))
         }
     }
@@ -219,10 +222,47 @@ impl Parser {
         self.next_token();
         
         if self.cur_token.typ != TokenType::RParen {
-            return Err(ParseError(format!("Expected ')', got {:?}", self.cur_token)))
+            return Err(ParseError(format!("Expected ')', got {:?}", self.cur_token)));
         }
 
         Ok(expression)
+    }
+
+    fn parse_if_expression(&mut self) -> Result<ast::Expression, ParseError> {
+        let if_token = self.cur_token.clone();
+
+        self.expect_next(TokenType::LParen)?;
+        self.next_token();
+
+        let condition = self.parse_expression(Precedence::Lowest)?;
+
+        self.expect_next(TokenType::RParen)?;
+        self.expect_next(TokenType::LBrace)?;
+        
+        let consequence = self.parse_block_statement()?;
+
+        Ok(ast::Expression::If { 
+            token: if_token, 
+            condition: Box::new(condition), 
+            consequence: Box::new(consequence), 
+            alternative: None 
+        })
+    }
+
+    fn parse_block_statement(&mut self) -> Result<ast::Statement, ParseError> {
+        let l_brace_token = self.cur_token.clone();
+        let mut statements: Vec<Statement> = Vec::new();
+
+        self.next_token();
+
+        while self.cur_token.typ != TokenType::RBrace && self.cur_token.typ != TokenType::Eof {
+            statements.push(self.parse_statement()?);
+        }
+
+        Ok(Statement::Block { 
+            token: l_brace_token, 
+            statements
+         })
     }
 
     fn parse_infix_expression(&mut self, left: ast::Expression) -> Result<ast::Expression, ParseError> {
@@ -250,6 +290,15 @@ impl Parser {
         while self.cur_token.typ == TokenType::Semicolon {
             self.next_token();
         }
+    }
+
+    fn expect_next(&mut self, token_type: TokenType) -> Result<(), ParseError> {
+        if self.peek_token.typ != token_type {
+            return Err(ParseError(format!("Expected {:?}, got: {:?}", token_type, self.peek_token)));
+        }
+
+        self.next_token();
+        Ok(())
     }
 }
 
