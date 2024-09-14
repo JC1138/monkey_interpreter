@@ -22,7 +22,7 @@ fn main() {
         match parser.parse_program() {
             Ok(program) => {
                 for statement in &program.statements {
-                    statement.dbg();
+                    println!("{}", statement.dbg());
                 }
     
                 println!("{program:#?}")

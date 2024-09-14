@@ -373,19 +373,64 @@ mod tests {
         do_test(program, expected);
     }
 
+    #[test]
+    fn test_grouped_expression() {
+        let program = r#"
+            1 + (2 + 3) + 4;
+            (5 + 5) * 2
+            2 / (5 + 5);
+            -(5 + 5);
+            !(true == true)
+        "#.to_string();
+
+    let expected = vec![
+        "((1 + (2 + 3)) + 4)",
+        "((5 + 5) * 2)",
+        "(2 / (5 + 5))",
+        "(-(5 + 5))",
+        "(!(true == true))",
+    ];
+
+    let l = Lexer::new(program);
+    let mut parser = Parser::new(l);
+
+    let parsed = parser.parse_program().unwrap();
+    for p in &parsed.statements {
+        println!("{}", p.dbg())
+    }
+
+    assert_eq!(parsed.statements.len(), expected.len(), "Expected {} statements, got {}", expected.len(), parsed.statements.len());
+    for i in 0..expected.len() {
+        assert_eq!(parsed.statements[i].dbg(), expected[i]);
+    }
+    }
+
+    #[test]
+    fn test_precidence() {
+        let program = r#"
+            a + add(b * c) + d;
+            add(a, b, 1, 2 * 3, 4 + 5, add(6, 7 * 8))
+            add(a + b + c * d / f + g)
+        "#.to_string();
+
+        let expected = vec![
+            "((a + add((b * c))) + d)",
+            "add(a, b, 1, (2 * 3), (4 + 5), add(6, (7 * 8)))",
+            "add((((a + b) + ((c * d) / f)) + g))",
+        ];
+
+        let l = Lexer::new(program);
+        let mut parser = Parser::new(l);
+
+        let parsed = parser.parse_program().unwrap();
+
+        assert_eq!(parsed.statements.len(), expected.len(), "Expected {} statements, got {}", expected.len(), parsed.statements.len());
+        for i in 0..expected.len() {
+            assert_eq!(parsed.statements[i].dbg(), expected[i]);
+        }
+    }
+
 }
-
-
-
-
-
-
-
-
-
-
-
-
         // println!("Expression: {:#?}", expression);
 
         // // println!("Current token: {:?}", self.cur_token);

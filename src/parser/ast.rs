@@ -25,6 +25,12 @@ pub enum Expression {
         left: Box<Expression>,
         operator: String,
         right: Box<Expression>
+    },
+    If {
+        token: Token, // 'if',
+        condition: Box<Expression>,
+        consequence: Box<Statement>, // Block statement
+        alternative: Option<Box<Statement>>,
     }
 }
 
@@ -81,30 +87,46 @@ impl Expression {
         }
     }
 
-    pub fn dbg(&self) {
+    pub fn construct_if_expression(condition: Expression, consequence: Statement, alternative: Option<Statement>) -> Self {
+        if let Statement::Block { .. } = &consequence {
+            if let Some(alt) = &alternative {
+                if let Statement::Block { .. } = &alt {
+                } else {
+                    panic!("Alternative must be a Block statement, got: {:?}", alternative);
+                }
+            }
+        } else {
+            panic!("Consequence must be a Block statement, got: {:?}", consequence);
+        }
+
+        Self::If { 
+            token: Token::new_if(),
+            condition: Box::new(condition),
+            consequence: Box::new(consequence),
+            alternative: alternative.map(|alt| Box::new(alt)) // if let Some(alt) = alternative { Some(Box::new(alt)) } else { None }
+        }
+    }
+
+    pub fn dbg(&self) -> String {
         match self {
-            Self::Identifier { value, .. } => print!("{value}"),
-            Self::Integer { value, .. } => print!("{value}"),
-            Self::Boolean { value, .. } => print!("{value}"),
-            Self::Prefix { operator, right, .. } => {
-                print!("({operator}");
-                right.dbg();
-                print!(")")
-            },
-            Self::Infix { left, operator, right, .. } => {
-                print!("(");
-                left.dbg();
-                print!(" ");
-                print!("{operator}");
-                print!(" ");
-                right.dbg();
-                print!(")")
+            Self::Identifier { value, .. } => value.to_string(),
+            Self::Integer { value, .. } => value.to_string(),
+            Self::Boolean { value, .. } => value.to_string(),
+            Self::Prefix { operator, right, .. } => format!("({}{})", operator, right.dbg()),
+            Self::Infix { left, operator, right, .. } => format!("({} {} {})", left.dbg(), operator, right.dbg()),
+            Self::If { token, condition, consequence, alternative } => {
+                let mut out = format!("{} {} {}", token.literal, condition.dbg(), consequence.dbg());
+                if let Some(alt) = alternative {
+                    out += &alt.dbg();
+                }
+
+                out
             }
         }
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Statement {
     ExpressionStatement {
         token: Token,
@@ -118,11 +140,14 @@ pub enum Statement {
     Return {
         token: Token,
         return_value: Expression,
+    },
+    Block {
+        token: Token, // '{'
+        statements: Vec<Statement>
     }
 }
 
 impl Statement {
-
     pub fn construct_expression_statement(first_token: Token, expression: Expression) -> Self {
         Self::ExpressionStatement { token: first_token, expression }
     }
@@ -148,21 +173,23 @@ impl Statement {
         }
     }
 
-    pub fn dbg(&self) {
-        match self {
-            Self::Let { token, name, value } => {
-                print!("{} ", token.literal);
-                name.dbg();
-                print!(" = ");
-                value.dbg();
-            },
-            Self::Return { token, return_value } => {
-                print!("{} ", token.literal);
-                return_value.dbg();
-            },
-            Self::ExpressionStatement { expression, .. } => expression.dbg(),
-        };
+    pub fn construct_block_statement(statements: Vec<Self>) -> Self {
+        Self::Block { 
+            token: Token::new_l_brace(), 
+            statements 
+        }
+    }
 
-        println!();
+    pub fn dbg(&self) -> String {
+        match self {
+            Self::Let { token, name, value } => format!("{} {} = {}", token.literal, name.dbg(), value.dbg()),
+            Self::Return { token, return_value } => format!("{} {}", token.literal, return_value.dbg()),
+            Self::ExpressionStatement { expression, .. } => expression.dbg(),
+            Self::Block { statements, .. } => {
+                let mut out = "{ ".to_string();
+                for s in statements { out += &s.dbg() }
+                return out + " }"
+            }
+        }
     }
 }
