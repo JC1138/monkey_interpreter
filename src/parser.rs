@@ -32,6 +32,7 @@ impl Precedence {
             TokenType::LT | TokenType::GT => Precedence::GTLT,
             TokenType::Plus | TokenType::Dash => Precedence::Sum,
             TokenType::FSlash | TokenType::Star => Precedence::Mult,
+            TokenType::LParen => Precedence::Call,
             _ => Precedence::Lowest,
         }
     }
@@ -172,6 +173,10 @@ impl Parser {
                 self.next_token();
                 Ok(Some(self.parse_infix_expression(left)?))
             },
+            TokenType::LParen => {
+                self.next_token();
+                Ok(Some(self.parse_call_expression(left)?))
+            },
             _ => Ok(None),
         }
     }
@@ -262,7 +267,7 @@ impl Parser {
 
         self.expect_next(TokenType::LParen)?;
         let params = self.parse_fn_paramaters()?;
-        self.expect_next(TokenType::LBrace);
+        self.expect_next(TokenType::LBrace)?;
         let body = self.parse_block_statement()?;
 
         Ok(ast::Expression::Function { 
@@ -298,8 +303,7 @@ impl Parser {
 
         self.next_token();
 
-        while self.cur_token.typ == TokenType::Identifier {
-            println!("{:?}", self.cur_token);
+        while self.cur_token.typ != TokenType::RParen {
             params.push(ast::Expression::construct_identifier_expression(&self.cur_token.literal));
             if self.peek_token.typ == TokenType::Comma {
                 self.next_token();
@@ -328,6 +332,45 @@ impl Parser {
             left: Box::new(left),
             right: Box::new(right)
         })
+    }
+
+    fn parse_call_expression(&mut self, function: ast::Expression) -> Result<ast::Expression, ParseError> {
+        let call_token = self.cur_token.clone();
+
+        let argurments = self.parse_call_args()?;
+
+        Ok(ast::Expression::Call { 
+            token: call_token, 
+            function: Box::new(function), 
+            argurments
+        })
+    }
+
+    fn parse_call_args(&mut self) -> Result<Vec<ast::Expression>, ParseError> {
+        let mut args: Vec<ast::Expression> = Vec::new();
+
+        self.next_token();
+
+        if self.cur_token.typ == TokenType::RParen {
+            return Ok(args);
+        }
+
+        // println!("{:?} : {:?}", self.cur_token, self.peek_token);
+
+        loop {
+            let expression = self.parse_expression(Precedence::Lowest)?;
+            // println!("{:?}", expression);
+            args.push(expression);
+            if self.peek_token.typ != TokenType::Comma {
+                break;
+            }
+            self.next_token();
+            self.next_token();
+        }
+
+        self.expect_next(TokenType::RParen)?;
+
+        Ok(args)
     }
 
     fn end_line(&mut self) {

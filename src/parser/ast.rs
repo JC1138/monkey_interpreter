@@ -18,24 +18,29 @@ pub enum Expression {
     Prefix {
         token: Token,
         operator: String,
-        right: Box<Expression>,
+        right: Box<Self>,
     },
     Infix {
         token: Token, // The operator token
-        left: Box<Expression>,
+        left: Box<Self>,
         operator: String,
-        right: Box<Expression>
+        right: Box<Self>
     },
     If {
         token: Token, // 'if',
-        condition: Box<Expression>,
+        condition: Box<Self>,
         consequence: Box<Statement>, // Block statement
         alternative: Option<Box<Statement>>,
     },
     Function {
         token: Token, // 'fn'
-        params: Vec<Expression>,
+        params: Vec<Self>,
         body: Box<Statement> // Block statement
+    },
+    Call {
+        token: Token, // '('
+        function: Box<Self>, // Identifier or Function
+        argurments: Vec<Self>,
     }
 }
 
@@ -122,7 +127,7 @@ impl Expression {
             Self::If { token, condition, consequence, alternative } => {
                 let mut out = format!("{} {} {}", token.literal, condition.dbg(), consequence.dbg());
                 if let Some(alt) = alternative {
-                    out += &alt.dbg();
+                    out += &format!("\nelse {}", alt.dbg());
                 }
 
                 out
@@ -134,7 +139,15 @@ impl Expression {
                                         .collect::<Vec<String>>()
                                         .join(",");
                 format!("{}({}) {}", token.literal, params, body.dbg())
-            } 
+            },
+            Self::Call { function, argurments, .. } => {
+                let arguements = argurments
+                                            .iter()
+                                            .map(|param| param.dbg())
+                                            .collect::<Vec<String>>()
+                                            .join(",");
+                format!("{}({})", function.dbg(), arguements)
+            }
         }
     }
 }
@@ -199,8 +212,8 @@ impl Statement {
             Self::Return { token, return_value } => format!("{} {}", token.literal, return_value.dbg()),
             Self::ExpressionStatement { expression, .. } => expression.dbg(),
             Self::Block { statements, .. } => {
-                let mut out = "{ ".to_string();
-                for s in statements { out += &s.dbg() }
+                let mut out = "{\n".to_string();
+                for s in statements { out += &format!("\t{}\n", s.dbg()) }
                 return out + " }"
             }
         }
