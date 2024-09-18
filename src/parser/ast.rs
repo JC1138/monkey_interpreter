@@ -40,7 +40,7 @@ pub enum Expression {
     Call {
         token: Token, // '('
         function: Box<Self>, // Identifier or Function
-        argurments: Vec<Self>,
+        arguements: Vec<Self>,
     }
 }
 
@@ -140,8 +140,8 @@ impl Expression {
                                         .join(",");
                 format!("{}({}) {}", token.literal, params, body.dbg())
             },
-            Self::Call { function, argurments, .. } => {
-                let arguements = argurments
+            Self::Call { function, arguements, .. } => {
+                let arguements = arguements
                                             .iter()
                                             .map(|param| param.dbg())
                                             .collect::<Vec<String>>()

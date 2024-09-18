@@ -1,0 +1,1 @@
+let x = 10; let outer = fn() { let x = 20; let inner = fn() { return x; }; return inner; }; let func = outer(); func();

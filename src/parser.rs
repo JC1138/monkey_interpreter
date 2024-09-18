@@ -3,7 +3,7 @@ use ast::{Expression, Statement};
 use crate::lexer::{Lexer, token::{Token, TokenType}};
 
 mod arena_tree;
-mod ast;
+pub mod ast;
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -283,7 +283,10 @@ impl Parser {
 
         self.next_token();
 
-        while self.cur_token.typ != TokenType::RBrace && self.cur_token.typ != TokenType::Eof {
+        while self.cur_token.typ != TokenType::RBrace {
+            if let TokenType::Eof = self.cur_token.typ {
+                return Err(ParseError("Unexpected EOF while parsing block statement".to_string()))
+            }
             statements.push(self.parse_statement()?);
         }
 
@@ -296,7 +299,7 @@ impl Parser {
     fn parse_fn_paramaters(&mut self) -> Result<Vec<ast::Expression>, ParseError> {
         let mut params: Vec<Expression> = Vec::new();
 
-        if self.peek_token.typ == TokenType::LParen {
+        if self.peek_token.typ == TokenType::RParen {
             self.next_token();
             return Ok(params)
         }
@@ -337,12 +340,12 @@ impl Parser {
     fn parse_call_expression(&mut self, function: ast::Expression) -> Result<ast::Expression, ParseError> {
         let call_token = self.cur_token.clone();
 
-        let argurments = self.parse_call_args()?;
+        let arguements = self.parse_call_args()?;
 
         Ok(ast::Expression::Call { 
             token: call_token, 
             function: Box::new(function), 
-            argurments
+            arguements
         })
     }
 

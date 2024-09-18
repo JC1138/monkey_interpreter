@@ -15,3 +15,5 @@ let tricky = fn(a, b) {
         }
     }(a);
 };
+
+tricky(1, 3);
