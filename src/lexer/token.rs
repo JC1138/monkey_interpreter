@@ -4,7 +4,7 @@ pub enum TokenType {
     Eof,
     // Identifiers + literals
     Identifier, // add, foobar, x, y, ...
-    Int, // 1343456
+    Int,        // 1343456
     // Operators
     Assign,
     Plus,
@@ -21,7 +21,7 @@ pub enum TokenType {
     LT,
     GT,
     Exclam,
-    //two-character
+    //compare
     Eq,
     NEq,
     // Keywords

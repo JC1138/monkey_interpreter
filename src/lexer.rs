@@ -45,18 +45,18 @@ impl Lexer {
                     Token::new_assign()
                 }
             },
-            '+' => Token::new_plus(), // Self::get_single_char_token(TokenType::Plus, c),
-            ',' => Token::new_comma(), // Self::get_single_char_token(TokenType::Comma, c),
-            ';' => Token::new_semicolon(), // Self::get_single_char_token(TokenType::Semicolon, c),
-            '(' => Token::new_l_paren(), // Self::get_single_char_token(TokenType::LParen, c),
-            ')' => Token::new_r_paren(), // Self::get_single_char_token(TokenType::RParen, c),
-            '{' => Token::new_l_brace(), // Self::get_single_char_token(TokenType::LBrace, c),
-            '}' => Token::new_r_brace(), // Self::get_single_char_token(TokenType::RBrace, c),
-            '-' => Token::new_dash(), // Self::get_single_char_token(TokenType::Dash, c),
-            '/' => Token::new_f_slash(), // Self::get_single_char_token(TokenType::FSlash, c),
-            '*' => Token::new_star(), // Self::get_single_char_token(TokenType::Star, c),
-            '<' => Token::new_l_t(), // Self::get_single_char_token(TokenType::LT, c),
-            '>' => Token::new_g_t(), // Self::get_single_char_token(TokenType::GT, c),
+            '+' => Token::new_plus(),
+            ',' => Token::new_comma(),
+            ';' => Token::new_semicolon(),
+            '(' => Token::new_l_paren(),
+            ')' => Token::new_r_paren(),
+            '{' => Token::new_l_brace(),
+            '}' => Token::new_r_brace(),
+            '-' => Token::new_dash(),
+            '/' => Token::new_f_slash(),
+            '*' => Token::new_star(),
+            '<' => Token::new_l_t(),
+            '>' => Token::new_g_t(),
             '!' => {
                 if self.peek_char() == '=' {
                     self.read_char();

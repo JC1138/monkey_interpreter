@@ -7,8 +7,6 @@ use std::path::Path;
 use std::io::{self, Write};
 
 use monkey_interpreter::{lexer::Lexer, parser};
-
-/// A simple program to read a file from the programs directory
 #[derive(Parser)]
 struct Args {
     /// The file name to read (located in /programs directory)
@@ -51,11 +49,7 @@ fn main() -> Result<(), std::io::Error> {
 fn parse_file(file_name: &str) -> Result<Program, std::io::Error> {
     let file_path = Path::new("programs").join(file_name);
     println!("{}", file_path.to_str().unwrap());
-    // Read the file contents
     let program = fs::read_to_string(file_path)?;
-
-    // Print the file contents
-    // println!("File contents:\n{}", contents);
 
     let lexer = Lexer::new(program.to_string());
 

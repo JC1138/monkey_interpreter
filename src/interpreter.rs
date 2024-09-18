@@ -13,7 +13,7 @@ pub enum Object {
     Return(Box<Self>),
     Function {
         parameters: Vec<String>, // Identifiers
-        body: ast::Statement, // Block statement
+        body: ast::Statement,    // Block statement
         fn_env: Weak<RefCell<Environment>>,
     },
     Null,
@@ -60,8 +60,6 @@ impl Environment {
     }
 
     pub fn get(&self, name: &str) -> Option<Object> {
-        // println!("Getting: {}", name);
-        // println!("{:?}", self.vars);
         if let Some(obj) = self.vars.get(name) {
             return Some(obj.clone());
         }
@@ -74,9 +72,7 @@ impl Environment {
     }
 
     pub fn set(&mut self, name: &str, val: Object) {
-        // println!("SETTING: {}", name);
         self.vars.insert(name.to_string(), val);
-        // println!("{:?}", self.vars)
     }
 }
 
@@ -101,11 +97,11 @@ impl Interpreter {
         let mut result = Object::Null;
         for statement in statements {
             result = self.eval_statement(statement, env)?;
-            if let Object::Return(ref return_value) = result {
+            if let Object::Return(_) = result {
                 if is_block {
-                    return Ok(result.clone()) // if in a block statement, we don't want to unwrap the return value
+                    return Ok(result) // if in a block statement, we don't want to unwrap the return value
                 }
-                return Ok(*return_value.clone());
+                return Ok(result.unwrap_return());
             }
         }
     

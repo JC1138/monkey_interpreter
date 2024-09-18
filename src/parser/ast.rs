@@ -30,7 +30,7 @@ pub enum Expression {
         token: Token, // 'if',
         condition: Box<Self>,
         consequence: Box<Statement>, // Block statement
-        alternative: Option<Box<Statement>>,
+        alternative: Option<Box<Statement>>, // Block statement
     },
     Function {
         token: Token, // 'fn'

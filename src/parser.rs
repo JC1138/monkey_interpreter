@@ -102,14 +102,14 @@ impl Parser {
 
         self.next_token();
 
-        let expression = self.parse_expression(Precedence::Lowest)?;
+        let value = self.parse_expression(Precedence::Lowest)?;
 
         self.end_line();
 
         Ok(ast::Statement::Let {
                 token: let_token,
                 name,
-                value: expression, //ast::Expression::Identifier {token: Token {typ: TokenType::Illegal, literal: "Illegal".to_string()}, value: "".to_string()}, // TODO: replace with actual expression
+                value,
             }
         )
     }
@@ -358,11 +358,8 @@ impl Parser {
             return Ok(args);
         }
 
-        // println!("{:?} : {:?}", self.cur_token, self.peek_token);
-
         loop {
             let expression = self.parse_expression(Precedence::Lowest)?;
-            // println!("{:?}", expression);
             args.push(expression);
             if self.peek_token.typ != TokenType::Comma {
                 break;
