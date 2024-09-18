@@ -2,13 +2,14 @@
 pub enum TokenType {
     Illegal,
     Eof,
-    // Identifiers + literals
+    // identifiers + literals
     Identifier, // add, foobar, x, y, ...
     Int,        // 1343456
-    // Operators
+    String,
+    // operators
     Assign,
     Plus,
-    // Delimiters
+    // delimiters
     Comma,
     Semicolon,
     LParen,
@@ -24,7 +25,7 @@ pub enum TokenType {
     //compare
     Eq,
     NEq,
-    // Keywords
+    // keywords
     Function,
     Let,
     True,
@@ -47,6 +48,7 @@ impl Token {
     pub fn new_eof() -> Self {
         Self { typ: TokenType::Eof, literal: "".to_string() }
     }
+    // identifiers + literals
     pub fn new_identifier(identifier: &str) -> Self {
         Self { typ: TokenType::Identifier, literal: identifier.to_string() }
     }
@@ -56,12 +58,17 @@ impl Token {
     pub fn new_int_i(value: isize) -> Self {
         Self::new_int(&value.to_string())
     }
+    pub fn new_string(value: &str) -> Self {
+        Self { typ: TokenType::String, literal: value.to_string() }
+    }
+    // operators
     pub fn new_assign() -> Self {
         Self { typ: TokenType::Assign, literal: "=".to_string() }
     }
     pub fn new_plus() -> Self {
         Self { typ: TokenType::Plus, literal: "+".to_string() }
     }
+    // delimiters
     pub fn new_comma() -> Self {
         Self { typ: TokenType::Comma, literal: ",".to_string() }
     }
@@ -98,12 +105,14 @@ impl Token {
     pub fn new_exclam() -> Self {
         Self { typ: TokenType::Exclam, literal: "!".to_string() }
     }
+    //compare
     pub fn new_eq() -> Self {
         Self { typ: TokenType::Eq, literal: "==".to_string() }
     }
     pub fn new_n_eq() -> Self {
         Self { typ: TokenType::NEq, literal: "!=".to_string() }
     }
+    // keywords
     pub fn new_function() -> Self {
         Self { typ: TokenType::Function, literal: "fn".to_string() }
     }

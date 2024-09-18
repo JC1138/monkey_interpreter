@@ -1,0 +1,217 @@
+{
+    "x": Function {
+        parameters: [
+            Identifier {
+                token: Token {
+                    typ: Identifier,
+                    literal: "x"
+                },
+                value: "x"
+            }
+        ],
+        body: Block {
+            token: Token {
+                typ: LBrace,
+                literal: "{"
+            },
+            statements: []
+        },
+        env: RefCell {
+            value: <borrowed>
+        }
+    }
+}
+
+Ok(Function {
+    parameters: [
+        Identifier {
+            token: Token {
+                typ: Identifier,
+                literal: "x"
+            },
+            value: "x"
+        }
+    ],
+    body: Block {
+        token: Token {
+            typ: LBrace,
+            literal: "{"
+        },
+        statements: []
+    },
+    env: RefCell {
+        value: Environment {
+            vars: {
+                "x": Function {
+                    parameters: [
+                        Identifier {
+                            token: Token {
+                                typ: Identifier,
+                                literal: "x"
+                            },
+                            value: "x"
+                        }
+                    ],
+                    body: Block {
+                        token: Token {
+                            typ: LBrace,
+                            literal: "{"
+                        },
+                        statements: []
+                    },
+                    env: RefCell {
+                        value: Environment {
+                            vars: {
+                                "x": Function {
+                                    parameters: [
+                                        Identifier {
+                                            token: Token {
+                                                typ: Identifier,
+                                                literal: "x"
+                                            },
+                                            value: "x"
+                                        }
+                                    ],
+                                    body: Block {
+                                        token: Token {
+                                            typ: LBrace,
+                                            literal: "{"
+                                        },
+                                        statements: []
+                                    },
+                                    env: RefCell {
+                                        value: Environment {
+                                            vars: {
+                                                "x": Function {
+                                                    parameters: [
+                                                        Identifier {
+                                                            token: Token {
+                                                                typ: Identifier,
+                                                                literal: "x"
+                                                            },
+                                                            value: "x"
+                                                        }
+                                                    ],
+                                                    body: Block {
+                                                        token: Token {
+                                                            typ: LBrace,
+                                                            literal: "{"
+                                                        },
+                                                        statements: []
+                                                    },
+                                                    env: RefCell {
+                                                        value: Environment {
+                                                            vars: {
+                                                                "x": Function {
+                                                                    parameters: [
+                                                                        Identifier {
+                                                                            token: Token {
+                                                                                typ: Identifier,
+                                                                                literal: "x"
+                                                                            },
+                                                                            value: "x"
+                                                                        }
+                                                                    ],
+                                                                    body: Block {
+                                                                        token: Token {
+                                                                            typ: LBrace,
+                                                                            literal: "{"
+                                                                        },
+                                                                        statements: []
+                                                                    },
+                                                                    env: RefCell {
+                                                                        value: Environment {
+                                                                            vars: {
+                                                                                "x": Function {
+                                                                                    parameters: [
+                                                                                        Identifier {
+                                                                                            token: Token {
+                                                                                                typ: Identifier,
+                                                                                                literal: "x"
+                                                                                            },
+                                                                                            value: "x"
+                                                                                        }
+                                                                                    ],
+                                                                                    body: Block {
+                                                                                        token: Token {
+                                                                                            typ: LBrace,
+                                                                                            literal: "{"
+                                                                                        },
+                                                                                        statements: []
+                                                                                    },
+                                                                                    env: RefCell {
+                                                                                        value: Environment {
+                                                                                            vars: {
+                                                                                                "x": Function {
+                                                                                                    parameters: [
+                                                                                                        Identifier {
+                                                                                                            token: Token {
+                                                                                                                typ: Identifier,
+                                                                                                                literal: "x"
+                                                                                                            },
+                                                                                                            value: "x"
+                                                                                                        }
+                                                                                                    ],
+                                                                                                    body: Block {
+                                                                                                        token: Token {
+                                                                                                            typ: LBrace,
+                                                                                                            literal: "{"
+                                                                                                        },
+                                                                                                        statements: []
+                                                                                                    },
+                                                                                                    env: RefCell {
+                                                                                                        value: Environment {
+                                                                                                            vars: {
+                                                                                                                "x": Function {
+                                                                                                                    parameters: [
+                                                                                                                        Identifier {
+                                                                                                                            token: Token {
+                                                                                                                                typ: Identifier,
+                                                                                                                                literal: "x"
+                                                                                                                            },
+                                                                                                                            value: "x"
+                                                                                                                        }
+                                                                                                                    ],
+                                                                                                                    body: Block {
+                                                                                                                        token: Token {
+                                                                                                                            typ: LBrace,
+                                                                                                                            literal: "{"
+                                                                                                                        },
+                                                                                                                        statements: []
+                                                                                                                    },
+                                                                                                                    env: RefCell {
+                                                                                                                        value: Environment {
+                                                                                                                            vars: {
+                                                                                                                                // The structure continues recursively...
+                                                                                                                            }
+                                                                                                                        }
+                                                                                                                    }
+                                                                                                                }
+                                                                                                            }
+                                                                                                        }
+                                                                                                    }
+                                                                                                }
+                                                                                            }
+                                                                                        }
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+})

@@ -1,6 +1,8 @@
 use token::Token;
+use helper::{is_digit, is_letter, is_str_char};
 
 pub mod token;
+mod helper;
 
 
 #[derive(Debug)]
@@ -66,7 +68,12 @@ impl Lexer {
                 }
             },
 
-            c if Self::is_letter(c) => {
+            '"' => {
+                self.read_char();
+                Token::new_string(&self.read_string())
+            }
+
+            c if is_letter(c) => {
                 return match self.read_identifier().as_str() {
                     "let" => Token::new_let(),
                     "fn" => Token::new_function(),
@@ -79,7 +86,7 @@ impl Lexer {
                 }
             },
 
-            c if Self::is_digit(c) => {
+            c if is_digit(c) => {
                 return Token::new_int(&self.read_int())
             },
 
@@ -91,14 +98,6 @@ impl Lexer {
         self.read_char();
 
         token
-    }
-
-    fn is_letter(c: char) -> bool {
-        matches!(c, 'a'..='z' | 'A'..='Z' | '_')
-    }
-
-    fn is_digit(c: char) -> bool {
-        matches!(c, '0'..='9')
     }
 
     fn read_char(&mut self) {
@@ -116,22 +115,26 @@ impl Lexer {
     }
 
     fn read_match(&mut self, matcher: fn(char) -> bool) -> String {
-        let position = self.position;
+        let start = self.position;
 
         loop {
             self.read_char();
             if !matcher(self.ch) { break; }
         }
 
-        self.src[position..self.position].to_string()
+        self.src[start..self.position].to_string()
     }
 
     fn read_identifier(&mut self) -> String {
-        self.read_match(Self::is_letter)
+        self.read_match(is_letter)
     }
 
     fn read_int(&mut self) -> String {
-        self.read_match(Self::is_digit)
+        self.read_match(is_digit)
+    }
+
+    fn read_string(&mut self) -> String {
+        self.read_match(is_str_char)
     }
 
     fn eat_whitespace(&mut self) {
@@ -196,95 +199,98 @@ mod tests {
 
             10 == 10;
             10 != 9;
+            "foobar"
+            "foo bar";
         "#.to_string();
 
         let expected = vec![
-            (TokenType::Let, "let"),
-            (TokenType::Identifier, "five"),
-            (TokenType::Assign, "="),
-            (TokenType::Int, "5"),
-            (TokenType::Semicolon, ";"),
-            (TokenType::Let, "let"),
-            (TokenType::Identifier, "ten"),
-            (TokenType::Assign, "="),
-            (TokenType::Int, "10"),
-            (TokenType::Semicolon, ";"),
-            (TokenType::Let, "let"),
-            (TokenType::Identifier, "add"),
-            (TokenType::Assign, "="),
-            (TokenType::Function, "fn"),
-            (TokenType::LParen, "("),
-            (TokenType::Identifier, "x"),
-            (TokenType::Comma, ","),
-            (TokenType::Identifier, "y"),
-            (TokenType::RParen, ")"),
-            (TokenType::LBrace, "{"),
-            (TokenType::Identifier, "x"),
-            (TokenType::Plus, "+"),
-            (TokenType::Identifier, "y"),
-            (TokenType::Semicolon, ";"),
-            (TokenType::RBrace, "}"),
-            (TokenType::Semicolon, ";"),
-            (TokenType::Let, "let"),
-            (TokenType::Identifier, "result"),
-            (TokenType::Assign, "="),
-            (TokenType::Identifier, "add"),
-            (TokenType::LParen, "("),
-            (TokenType::Identifier, "five"),
-            (TokenType::Comma, ","),
-            (TokenType::Identifier, "ten"),
-            (TokenType::RParen, ")"),
-            (TokenType::Semicolon, ";"),
-            (TokenType::Exclam, "!"),
-            (TokenType::Dash, "-"),
-            (TokenType::FSlash, "/"),
-            (TokenType::Star, "*"),
-            (TokenType::Int, "5"),
-            (TokenType::Semicolon, ";"),
-            (TokenType::Int, "5"),
-            (TokenType::LT, "<"),
-            (TokenType::Int, "10"),
-            (TokenType::GT, ">"),
-            (TokenType::Int, "5"),     
-            (TokenType::Semicolon, ";"),
-
+            Token::new_let(),
+            Token::new_identifier("five"),
+            Token::new_assign(),
+            Token::new_int("5"),
+            Token::new_semicolon(),
+            Token::new_let(),
+            Token::new_identifier("ten"),
+            Token::new_assign(),
+            Token::new_int("10"),
+            Token::new_semicolon(),
+            Token::new_let(),
+            Token::new_identifier("add"),
+            Token::new_assign(),
+            Token::new_function(),
+            Token::new_l_paren(),
+            Token::new_identifier("x"),
+            Token::new_comma(),
+            Token::new_identifier("y"),
+            Token::new_r_paren(),
+            Token::new_l_brace(),
+            Token::new_identifier("x"),
+            Token::new_plus(),
+            Token::new_identifier("y"),
+            Token::new_semicolon(),
+            Token::new_r_brace(),
+            Token::new_semicolon(),
+            Token::new_let(),
+            Token::new_identifier("result"),
+            Token::new_assign(),
+            Token::new_identifier("add"),
+            Token::new_l_paren(),
+            Token::new_identifier("five"),
+            Token::new_comma(),
+            Token::new_identifier("ten"),
+            Token::new_r_paren(),
+            Token::new_semicolon(),
+            Token::new_exclam(),
+            Token::new_dash(),
+            Token::new_f_slash(),
+            Token::new_star(),
+            Token::new_int("5"),
+            Token::new_semicolon(),
+            Token::new_int("5"),
+            Token::new_l_t(),
+            Token::new_int("10"),
+            Token::new_g_t(),
+            Token::new_int("5"),
+            Token::new_semicolon(),
             // if statements:
-            (TokenType::If, "if"),
-            (TokenType::LParen, "("),
-            (TokenType::Int, "5"),
-            (TokenType::LT, "<"),
-            (TokenType::Int, "10"),
-            (TokenType::RParen, ")"),
-            (TokenType::LBrace, "{"),
-            (TokenType::Return, "return"),
-            (TokenType::True, "true"),
-            (TokenType::Semicolon, ";"),
-            (TokenType::RBrace, "}"),
-            (TokenType::Else, "else"),
-            (TokenType::LBrace, "{"),
-            (TokenType::Return, "return"),
-            (TokenType::False, "false"),
-            (TokenType::Semicolon, ";"),
-            (TokenType::RBrace, "}"),
+            Token::new_if(),
+            Token::new_l_paren(),
+            Token::new_int("5"),
+            Token::new_l_t(),
+            Token::new_int("10"),
+            Token::new_r_paren(),
+            Token::new_l_brace(),
+            Token::new_return(),
+            Token::new_true(),
+            Token::new_semicolon(),
+            Token::new_r_brace(),
+            Token::new_else(),
+            Token::new_l_brace(),
+            Token::new_return(),
+            Token::new_false(),
+            Token::new_semicolon(),
+            Token::new_r_brace(),
             // 2-char tokens
-            (TokenType::Int, "10"),
-            (TokenType::Eq, "=="),
-            (TokenType::Int, "10"),
-            (TokenType::Semicolon, ";"),
-            (TokenType::Int, "10"),
-            (TokenType::NEq, "!="),
-            (TokenType::Int, "9"),
-            (TokenType::Semicolon, ";"),
-            (TokenType::Eof, ""),
+            Token::new_int("10"),
+            Token::new_eq(),
+            Token::new_int("10"),
+            Token::new_semicolon(),
+            Token::new_int("10"),
+            Token::new_n_eq(),
+            Token::new_int("9"),
+            Token::new_semicolon(),
+            Token::new_eof(),
         ];
+
 
         let mut lexer = Lexer::new(src);
 
         for expected in expected {
             let token = lexer.next_token();
-            println!("{}: {token:?}", lexer.ch);
-            assert_eq!(expected.0, token.typ, "Expected type {:?}, got {:?}. Token: {:?}", expected.0, token.typ, token );
-            assert_eq!(expected.1, token.literal, "Expected literal {}, got {}. Token: {:?}", expected.1, token.literal, token);
+            assert_eq!(expected, token, "Expected {expected:?}, got {token:?}")
+            // println!("{}: {token:?}", lexer.ch);
+            // assert_eq!(expected.0, token.typ, "Expected type {:?}, got {:?}. Token: {:?}", expected.0, token.typ, token );
+            // assert_eq!(expected.1, token.literal, "Expected literal {}, got {}. Token: {:?}", expected.1, token.literal, token);
         }
 
     }
