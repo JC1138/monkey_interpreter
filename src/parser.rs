@@ -32,7 +32,7 @@ impl Precedence {
             TokenType::LT | TokenType::GT => Precedence::GTLT,
             TokenType::Plus | TokenType::Dash => Precedence::Sum,
             TokenType::FSlash | TokenType::Star => Precedence::Mult,
-            TokenType::LParen => Precedence::Call,
+            TokenType::LParen | TokenType::LBracket => Precedence::Call,
             _ => Precedence::Lowest,
         }
     }
@@ -179,6 +179,10 @@ impl Parser {
                 self.next_token();
                 Ok(Some(self.parse_call_expression(left)?))
             },
+            TokenType::LBracket => {
+                self.next_token();
+                Ok(Some(self.parse_array_index_expression(left)?))
+            }
             _ => Ok(None),
         }
     }
@@ -384,6 +388,20 @@ impl Parser {
             token: call_token, 
             function: Box::new(function), 
             arguements
+        })
+    }
+
+    fn parse_array_index_expression(&mut self, name: ast::Expression) -> Result<ast::Expression, ParseError> {
+        let array_idx_token = self.cur_token.clone();
+        self.next_token();
+        let i = self.parse_expression(Precedence::Lowest)?;
+        println!("cur token: {:?}", self.cur_token);
+        self.expect_next(TokenType::RBracket)?;
+
+        Ok(ast::Expression::ArrayIndex { 
+            token: array_idx_token, 
+            name: Box::new(name), 
+            i: Box::new(i)
         })
     }
 

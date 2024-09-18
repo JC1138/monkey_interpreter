@@ -23,6 +23,11 @@ pub enum Expression {
         token: Token, // '['
         elements: Vec<Self>
     },
+    ArrayIndex {
+        token: Token, // '['
+        name: Box<Self>,
+        i: Box<Self>,
+    },
     Prefix {
         token: Token,
         operator: String,
@@ -145,7 +150,8 @@ impl Expression {
                     .collect::<Vec<String>>()
                     .join(",");
                 format!("[{}]", elements)
-            }
+            },
+            Self::ArrayIndex { name, i, .. } => format!("{}[{}]", name.dbg(), i.dbg()),
             Self::Prefix { operator, right, .. } => format!("({}{})", operator, right.dbg()),
             Self::Infix { left, operator, right, .. } => format!("({} {} {})", left.dbg(), operator, right.dbg()),
             Self::If { token, condition, consequence, alternative } => {

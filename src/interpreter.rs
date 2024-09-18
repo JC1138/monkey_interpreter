@@ -185,6 +185,22 @@ impl Interpreter {
                     .iter()
                     .map(|exp| self.eval_expression(exp, env)).collect::<Result<Vec<Object>, EvalError>>()?;
                Ok(Object::Array(eval_elms))
+            },
+            ast::Expression::ArrayIndex { name, i, .. } => {
+                match(
+                    self.eval_expression(name, env)?,
+                    self.eval_expression(i, env)?
+                ) {
+                    (Object::Array(arr), Object::Integer(i)) => {
+                        let i = i as usize;
+                        if i >= arr.len() {
+                            Err(EvalError(format!("Array index out of bounds: i: {}, {}.len(): {}", i, name.as_ref().dbg(),  arr.len())))
+                        } else {
+                            Ok(arr[i].clone())
+                        }
+                    },
+                    (name @ _, i @ _) => Err(EvalError(format!("Invalid array index expression: ({:?})[{:?}]", name, i )))
+                }
             }
             ast::Expression::Prefix { operator, right, .. } => {
                 let right = self.eval_expression(right, env)?;
