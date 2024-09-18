@@ -10,6 +10,7 @@ pub struct EvalError(String);
 pub enum Object {
     Integer(isize),
     Boolean(bool),
+    String(String),
     Return(Box<Self>),
     Function {
         parameters: Vec<String>, // Identifiers
@@ -136,6 +137,7 @@ impl Interpreter {
         match expression {
             ast::Expression::Integer { value, .. } => Ok(Object::Integer(*value)),
             ast::Expression::Boolean { value, .. } => Ok(Object::Boolean(*value)),
+            ast::Expression::String { value, .. } => Ok(Object::String(value.to_string())),
             ast::Expression::Prefix { operator, right, .. } => {
                 let right = self.eval_expression(right, env)?;
                 self.eval_prefix_expression(operator, right)
@@ -182,9 +184,10 @@ impl Interpreter {
     fn eval_infix_expression(&self, left: Object, operator: &str, right: Object) -> Result<Object, EvalError> {
         let left = left.unwrap_return();
         let right: Object = right.unwrap_return();
-        if let Object::Integer(left_val) = left {
-            if let Object::Integer(right_val) = right {
-                let obj = match operator {
+
+        match (&left, &right) {
+            (Object::Integer(left_val), Object::Integer(right_val)) => {
+                Ok(match operator {
                     "+" => Object::Integer(left_val + right_val),
                     "-" => Object::Integer(left_val - right_val),
                     "*" => Object::Integer(left_val * right_val),
@@ -194,29 +197,26 @@ impl Interpreter {
                     "==" => Object::Boolean(left_val == right_val),
                     "!=" => Object::Boolean(left_val != right_val),
                     _ => return Err(EvalError(format!("Invalid operator in infix position: {left:?}{operator}{right:?}"))),
-                };
-                return Ok(obj);
-            } else {
-                return Err(EvalError(format!("Operator type mismatch!: {left:?}{operator}{right:?}")));
-            }
-        }
-    
-        if let Object::Boolean(left_val) = left {
-            if let Object::Boolean(right_val) = right {
-                let obj = match operator {
+                })
+            },
+            (Object::Boolean(left_val), Object::Boolean(right_val)) => {
+                Ok(match operator {
                     ">" => Object::Boolean(left_val > right_val),
                     "<" => Object::Boolean(left_val < right_val),
                     "==" => Object::Boolean(left_val == right_val),
                     "!=" => Object::Boolean(left_val != right_val),
                     _ => return Err(EvalError(format!("Invalid operator in infix position: {left:?}{operator}{right:?}"))),
-                };
-                return Ok(obj);
-            } else {
-                return Err(EvalError(format!("Operator type mismatch!: {left:?}{operator}{right:?}")));
-            }
+                })
+            },
+            (Object::String(left_val), Object::String(right_val)) => {
+                Ok(match operator {
+                    "+" => Object::String(left_val.to_string() + right_val),
+                    _ => return Err(EvalError(format!("Invalid operator in infix position: {left:?}{operator}{right:?}"))),
+                })
+            },
+
+            _ => Err(EvalError(format!("Unknown error in eval_infix_expression! {left:?}{operator}{right:?}")))
         }
-    
-        return Err(EvalError(format!("Unknown error in eval_infix_expression! {left:?}{operator}{right:?}")));
     }
     
     fn eval_if_expression(&self, condition: Object, consequence: &Box<Statement>, alternative: &Option<Box<Statement>>, env: &Env) -> Result<Object, EvalError> {

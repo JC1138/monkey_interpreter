@@ -96,32 +96,32 @@ fn start_repl(eval: bool) {
         match input.trim() {
             "E" => break,
             _ => {
-                let mut lexer = Lexer::new(input.to_string());
+                let lexer = Lexer::new(input.to_string());
 
-                loop {
-                    let token = lexer.next_token();
-                    println!("{:?}", token);
-                    if token.typ == TokenType::Eof { break }
-                }
-
-                // let mut parser = parser::Parser::new(lexer);
-        
-                // match parser.parse_program() {
-                //     Ok(program) => {
-                //         for statement in &program.statements {
-                //             println!("{}", statement.dbg());
-                //         }
-
-                //         if eval {
-                //             println!("******* EVAL *******");
-                //             println!("{:?}", interpreter.evaluate_program(&program));
-                //             println!("********************");
-                //         }
-            
-                //         // println!("{program:#?}")
-                //     },
-                //     Err(err) => println!("{err:?}")
+                // loop {
+                //     let token = lexer.next_token();
+                //     println!("{:?}", token);
+                //     if token.typ == TokenType::Eof { break }
                 // }
+
+                let mut parser = parser::Parser::new(lexer);
+        
+                match parser.parse_program() {
+                    Ok(program) => {
+                        for statement in &program.statements {
+                            println!("{}", statement.dbg());
+                        }
+
+                        if eval {
+                            println!("******* EVAL *******");
+                            println!("{:?}", interpreter.evaluate_program(&program));
+                            println!("********************");
+                        }
+            
+                        // println!("{program:#?}")
+                    },
+                    Err(err) => println!("{err:?}")
+                }
             }
         }
     }

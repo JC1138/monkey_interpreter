@@ -15,6 +15,10 @@ pub enum Expression {
         token: Token,
         value: bool,
     },
+    String {
+        token: Token,
+        value: String,
+    },
     Prefix {
         token: Token,
         operator: String,
@@ -63,6 +67,13 @@ impl Expression {
         Expression::Boolean { 
             token: if value {Token::new_true()} else {Token::new_false()}, 
             value,
+        }
+    }
+
+    pub fn construct_string_expression(value: &str) -> Self {
+        Expression::String { 
+            token: Token::new_string(value), 
+            value: value.to_string(),
         }
     }
 
@@ -122,6 +133,7 @@ impl Expression {
             Self::Identifier { value, .. } => value.to_string(),
             Self::Integer { value, .. } => value.to_string(),
             Self::Boolean { value, .. } => value.to_string(),
+            Self::String { value, .. } => value.to_string(),
             Self::Prefix { operator, right, .. } => format!("({}{})", operator, right.dbg()),
             Self::Infix { left, operator, right, .. } => format!("({} {} {})", left.dbg(), operator, right.dbg()),
             Self::If { token, condition, consequence, alternative } => {

@@ -159,6 +159,7 @@ impl Parser {
             TokenType::Identifier => self.parse_identifier_expression(),
             TokenType::Int => self.parse_integer_expression(),
             TokenType::True | TokenType::False => self.parse_boolean_expression(),
+            TokenType::String => self.parse_string_expression(),
             TokenType::Dash | TokenType::Exclam => self.parse_prefix_expression(),
             TokenType::LParen => self.parse_grouped_expression(),
             TokenType::If => self.parse_if_expression(),
@@ -184,7 +185,7 @@ impl Parser {
     fn parse_identifier_expression(&mut self) -> Result<ast::Expression, ParseError> {
         Ok(ast::Expression::Identifier { 
             token: self.cur_token.clone(), 
-            value: self.cur_token.literal.clone(),
+            value: self.cur_token.literal.to_string(),
         })
     }
 
@@ -206,6 +207,13 @@ impl Parser {
                 "false" => false,
                 _ => return Err(ParseError(format!("Unable to convert {} to bool!", self.cur_token.literal)))
             }
+        })
+    }
+
+    fn parse_string_expression(&mut self) -> Result<ast::Expression, ParseError> {
+        Ok(ast::Expression::String { 
+            token: self.cur_token.clone(), 
+            value: self.cur_token.literal.to_string(),
         })
     }
 
