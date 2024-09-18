@@ -86,43 +86,76 @@ pub struct Interpreter {
 
 impl Interpreter {
     pub fn new(mut global_env: Environment) -> Self {
+        fn check_num_args(args: &Vec<Object>, num_args: usize) -> Result<(), EvalError> {
+            if args.len() != num_args {  Err(EvalError(format!("Error in built-in len, expected 1 arguement, got: {}", args.len()))) } else { Ok(()) }
+        }
         global_env.set("len", Object::BuiltIn(|args| {
-            if args.len() != 1 {
-                Err(EvalError(format!("Error in built-in len, expected 1 arguement, got: {}", args.len())))
-            } else {
-                if let Object::String(str) = &args[0] {
-                    Ok(Object::Integer(str.len() as isize))
-                } else {
-                    Err(EvalError(format!("Error in built-in len, expected String, got: {:?}", args[0])))
+            check_num_args(&args, 1)?;
+            match &args[0] {
+                Object::String(str) => Ok(Object::Integer(str.len() as isize)),
+                Object::Array(arr) => Ok(Object::Integer(arr.len() as isize)),
+                _ => Err(EvalError(format!("Can't call built-in fn `len` on type: {:?}", args[0])))
+            }
+        }));
+
+        global_env.set("first", Object::BuiltIn(|args| {
+            check_num_args(&args, 1)?;
+            match &args[0] {
+                Object::Array(arr) => Ok( if arr.len() > 0 { arr[0].clone() } else { Object::Null }),
+                _ => Err(EvalError(format!("Can't call built-in fn `first` on type: {:?}", args[0])))
+            }
+        }));
+
+        global_env.set("last", Object::BuiltIn(|args| {
+            check_num_args(&args, 1)?;
+            match &args[0] {
+                Object::Array(arr) => Ok( if arr.len() > 0 { arr[arr.len() - 1].clone() } else { Object::Null }),
+                _ => Err(EvalError(format!("Can't call built-in fn `last` on type: {:?}", args[0])))
+            }
+        }));
+
+        global_env.set("rest", Object::BuiltIn(|args| {
+            check_num_args(&args, 1)?;
+            match &args[0] {
+                Object::Array(arr) => 
+                    Ok( if arr.len() > 0 { 
+                        let mut arr = arr.clone(); 
+                        arr.remove(0); 
+                        Object::Array(arr) 
+                    } else { Object::Null }),
+                _ => Err(EvalError(format!("Can't call built-in fn `rest` on type: {:?}", args[0])))
+            }
+        }));
+
+        global_env.set("push", Object::BuiltIn(|args| {
+            check_num_args(&args, 2)?;
+            match (&args[0], &args[1]) {
+                (Object::Array(arr), val @ _) => {
+                    let mut arr = arr.clone();
+                    arr.push(val.clone());
+                    Ok(Object::Array(arr))
                 }
+                _ => Err(EvalError(format!("Can't call built-in fn `push` on type: {:?}", args[0])))
             }
         }));
 
         global_env.set("print", Object::BuiltIn(|args| {
-            if args.len() != 1 {
-                Err(EvalError(format!("Error in built-in print, expected 1 arguement, got: {}", args.len())))
-            } else {
-                if let Object::String(str) = &args[0] {
-                    print!("{}", str);
-                    Ok(Object::String(str.to_string()))
-                } else {
-                    Err(EvalError(format!("Error in built-in print, expected String, got: {:?}", args[0])))
-                }
+            check_num_args(&args, 1)?;
+            match &args[0] {
+                Object::String(str) => Ok(Object::String(str.to_string())),
+                _ => Err(EvalError(format!("Can't call built-in fn `print` on type: {:?}", args[0])))
             }
         }));
 
         global_env.set("println", Object::BuiltIn(|args| {
-            if args.len() != 1 {
-                Err(EvalError(format!("Error in built-in print, expected 1 arguement, got: {}", args.len())))
-            } else {
-                match &args[0] {
-                    Object::String(val) => println!("{}", val),
-                    Object::Integer(val) => println!("{}", val),
-                    Object::Boolean(val) => println!("{}", val),
-                    _ => return Err(EvalError(format!("Error in built-in println, cannot print Object type: {:?}", args[0])))
-                };
-                Ok(args[0].clone())
-            }
+            check_num_args(&args, 1)?;
+            match &args[0] {
+                Object::String(val) => println!("{}", val),
+                Object::Integer(val) => println!("{}", val),
+                Object::Boolean(val) => println!("{}", val),
+                _ => return Err(EvalError(format!("Can't call built-in fn `println` on type: {:?}", args[0])))
+            };
+            Ok(args[0].clone())
         }));
 
         Self {
