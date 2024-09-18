@@ -211,11 +211,13 @@ impl Interpreter {
             (Object::String(left_val), Object::String(right_val)) => {
                 Ok(match operator {
                     "+" => Object::String(left_val.to_string() + right_val),
+                    "==" => Object::Boolean(left_val == right_val),
+                    "!=" => Object::Boolean(left_val != right_val),
                     _ => return Err(EvalError(format!("Invalid operator in infix position: {left:?}{operator}{right:?}"))),
                 })
             },
 
-            _ => Err(EvalError(format!("Unknown error in eval_infix_expression! {left:?}{operator}{right:?}")))
+            _ => Err(EvalError(format!("Type mismatch {left:?} {operator} {right:?}")))
         }
     }
     
