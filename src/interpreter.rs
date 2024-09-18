@@ -18,6 +18,8 @@ pub enum Object {
         fn_env: Weak<RefCell<Environment>>,
     },
     Null,
+
+    BuiltIn(fn(Vec<Object>) -> Result<Object, EvalError>)
 }
 
 impl Object {
@@ -82,9 +84,48 @@ pub struct Interpreter {
 }
 
 impl Interpreter {
-    pub fn new(env: Environment) -> Self {
+    pub fn new(mut global_env: Environment) -> Self {
+        global_env.set("len", Object::BuiltIn(|args| {
+            if args.len() != 1 {
+                Err(EvalError(format!("Error in built-in len, expected 1 arguement, got: {}", args.len())))
+            } else {
+                if let Object::String(str) = &args[0] {
+                    Ok(Object::Integer(str.len() as isize))
+                } else {
+                    Err(EvalError(format!("Error in built-in len, expected String, got: {:?}", args[0])))
+                }
+            }
+        }));
+
+        global_env.set("print", Object::BuiltIn(|args| {
+            if args.len() != 1 {
+                Err(EvalError(format!("Error in built-in print, expected 1 arguement, got: {}", args.len())))
+            } else {
+                if let Object::String(str) = &args[0] {
+                    print!("{}", str);
+                    Ok(Object::String(str.to_string()))
+                } else {
+                    Err(EvalError(format!("Error in built-in print, expected String, got: {:?}", args[0])))
+                }
+            }
+        }));
+
+        global_env.set("println", Object::BuiltIn(|args| {
+            if args.len() != 1 {
+                Err(EvalError(format!("Error in built-in print, expected 1 arguement, got: {}", args.len())))
+            } else {
+                match &args[0] {
+                    Object::String(val) => println!("{}", val),
+                    Object::Integer(val) => println!("{}", val),
+                    Object::Boolean(val) => println!("{}", val),
+                    _ => return Err(EvalError(format!("Error in built-in println, cannot print Object type: {:?}", args[0])))
+                };
+                Ok(args[0].clone())
+            }
+        }));
+
         Self {
-            envs: RefCell::new(vec![Rc::new(RefCell::new(env))])
+            envs: RefCell::new(vec![Rc::new(RefCell::new(global_env))]),
         }
     }
 
@@ -268,6 +309,14 @@ impl Interpreter {
                 return Err(EvalError(format!("Invalid call expression, function body: {body:?} must be Block statement")))
             }
         }
+
+        if let Object::BuiltIn(f) = function_obj {
+            let mut args = Vec::new();
+            for i in 0..arguements.len() {
+                args.push(self.eval_expression(&arguements[i], env)?)
+            }
+            return f(args)
+        } 
     
         Err(EvalError(format!("Invalid call expression, expression: {function:?} must evalate to function, got: {function_obj:?}")))
     }
