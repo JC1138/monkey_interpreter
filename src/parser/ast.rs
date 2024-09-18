@@ -19,6 +19,10 @@ pub enum Expression {
         token: Token,
         value: String,
     },
+    Array {
+        token: Token, // '['
+        elements: Vec<Self>
+    },
     Prefix {
         token: Token,
         operator: String,
@@ -134,6 +138,14 @@ impl Expression {
             Self::Integer { value, .. } => value.to_string(),
             Self::Boolean { value, .. } => value.to_string(),
             Self::String { value, .. } => value.to_string(),
+            Self::Array { elements, .. } => {
+                let elements = elements
+                    .iter()
+                    .map(|param| param.dbg())
+                    .collect::<Vec<String>>()
+                    .join(",");
+                format!("[{}]", elements)
+            }
             Self::Prefix { operator, right, .. } => format!("({}{})", operator, right.dbg()),
             Self::Infix { left, operator, right, .. } => format!("({} {} {})", left.dbg(), operator, right.dbg()),
             Self::If { token, condition, consequence, alternative } => {

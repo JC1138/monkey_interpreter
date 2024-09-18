@@ -162,6 +162,7 @@ impl Parser {
             TokenType::String => self.parse_string_expression(),
             TokenType::Dash | TokenType::Exclam => self.parse_prefix_expression(),
             TokenType::LParen => self.parse_grouped_expression(),
+            TokenType::LBracket => self.parse_array_expression(),
             TokenType::If => self.parse_if_expression(),
             TokenType::Function => self.parse_fn_expression(),
             _ => Err(ParseError(format!("Unable to parse token in prefix position: {:?}", self.cur_token)))
@@ -240,6 +241,35 @@ impl Parser {
         }
 
         Ok(expression)
+    }
+
+    fn parse_array_expression(&mut self) -> Result<ast::Expression, ParseError> {
+        Ok(ast::Expression::Array { token: self.cur_token.clone(), elements: self.parse_array_elements()? })
+    }
+
+    fn parse_array_elements(&mut self) -> Result<Vec<ast::Expression>, ParseError> {
+        let mut params: Vec<Expression> = Vec::new();
+
+        if self.peek_token.typ == TokenType::RBracket {
+            self.next_token();
+            return Ok(params)
+        }
+
+        self.next_token();
+
+        loop {
+            params.push(self.parse_expression(Precedence::Lowest)?);
+            if self.peek_token.typ == TokenType::Comma {
+                self.next_token();
+                self.next_token();
+            } else {
+                break;
+            }
+        }
+
+        self.expect_next(TokenType::RBracket)?;
+
+        Ok(params)
     }
 
     fn parse_if_expression(&mut self) -> Result<ast::Expression, ParseError> {

@@ -16,6 +16,8 @@ pub enum TokenType {
     RParen,
     LBrace,
     RBrace,
+    LBracket,
+    RBracket,
     Dash,
     FSlash,
     Star,
@@ -86,6 +88,12 @@ impl Token {
     }
     pub fn new_r_brace() -> Self {
         Self { typ: TokenType::RBrace, literal: "}".to_string() }
+    }
+    pub fn new_l_bracket() -> Self {
+        Self { typ: TokenType::LBracket, literal: "[".to_string() }
+    }
+    pub fn new_r_bracket() -> Self {
+        Self { typ: TokenType::RBracket, literal: "]".to_string() }
     }
     pub fn new_dash() -> Self {
         Self { typ: TokenType::Dash, literal: "-".to_string() }

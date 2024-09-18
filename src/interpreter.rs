@@ -11,6 +11,7 @@ pub enum Object {
     Integer(isize),
     Boolean(bool),
     String(String),
+    Array(Vec<Self>),
     Return(Box<Self>),
     Function {
         parameters: Vec<String>, // Identifiers
@@ -179,6 +180,12 @@ impl Interpreter {
             ast::Expression::Integer { value, .. } => Ok(Object::Integer(*value)),
             ast::Expression::Boolean { value, .. } => Ok(Object::Boolean(*value)),
             ast::Expression::String { value, .. } => Ok(Object::String(value.to_string())),
+            ast::Expression::Array { elements, .. } => {
+                let eval_elms = elements
+                    .iter()
+                    .map(|exp| self.eval_expression(exp, env)).collect::<Result<Vec<Object>, EvalError>>()?;
+               Ok(Object::Array(eval_elms))
+            }
             ast::Expression::Prefix { operator, right, .. } => {
                 let right = self.eval_expression(right, env)?;
                 self.eval_prefix_expression(operator, right)

@@ -54,6 +54,8 @@ impl Lexer {
             ')' => Token::new_r_paren(),
             '{' => Token::new_l_brace(),
             '}' => Token::new_r_brace(),
+            '[' => Token::new_l_bracket(),
+            ']' => Token::new_r_bracket(),
             '-' => Token::new_dash(),
             '/' => Token::new_f_slash(),
             '*' => Token::new_star(),
@@ -152,7 +154,7 @@ mod tests {
 
     #[test]
     fn basic_test() {
-        let src = "=+(){},;".to_string();
+        let src = "=+(){}[],;".to_string();
 
         let expected = vec![
             (TokenType::Assign, "="),
@@ -161,6 +163,8 @@ mod tests {
             (TokenType::RParen, ")"),
             (TokenType::LBrace, "{"),
             (TokenType::RBrace, "}"),
+            (TokenType::LBracket, "["),
+            (TokenType::RBracket, "]"),
             (TokenType::Comma, ","),
             (TokenType::Semicolon, ";"),
             (TokenType::Eof, ""),
