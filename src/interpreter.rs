@@ -69,6 +69,10 @@ impl Object {
         }
         self
     }
+
+    // pub fn unwrap_kv_pair(self) -> Self {
+    //     if let Self::KVPair(, )
+    // }
 }
 
 pub type Env = Rc<RefCell<Environment>>;
@@ -278,8 +282,12 @@ impl Interpreter {
                     },
                     Object::HashMap(hash_map) => {
                         let hash_key = HashKey::get_hash_key(&i)?;
-                        if let Some(val) = hash_map.get(&hash_key) {
-                            Ok(val.clone())
+                        if let Some(kv_pair) = hash_map.get(&hash_key) {
+                            if let Object::KVPair(_, value) = kv_pair {
+                                Ok(*value.clone())
+                            } else {
+                                Ok(Object::Null)
+                            }
                         } else {
                             Ok(Object::Null)
                         }
