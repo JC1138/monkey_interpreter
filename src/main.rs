@@ -1,6 +1,5 @@
 use clap::Parser;
 use monkey_interpreter::interpreter::{Environment, Interpreter};
-use monkey_interpreter::lexer::token::{Token, TokenType};
 use monkey_interpreter::parser::Program;
 use std::fs;
 use std::path::Path;
