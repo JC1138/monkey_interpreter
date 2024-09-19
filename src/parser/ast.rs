@@ -23,7 +23,14 @@ pub enum Expression {
         token: Token, // '['
         elements: Vec<Self>
     },
-    ArrayIndex {
+    KVPair {
+        key: Box<Expression>,
+        value: Box<Expression>,
+    },
+    Hash {
+        kv_pairs: Vec<Expression> // KVPair
+    },
+    Index {
         token: Token, // '['
         name: Box<Self>,
         i: Box<Self>,
@@ -151,7 +158,16 @@ impl Expression {
                     .join(",");
                 format!("[{}]", elements)
             },
-            Self::ArrayIndex { name, i, .. } => format!("{}[{}]", name.dbg(), i.dbg()),
+            Self::KVPair { key, value } => format!("{} : {}", key.dbg(), value.dbg()),
+            Self::Hash { kv_pairs } => {
+                let elements = kv_pairs
+                    .iter()
+                    .map(|kv_pair| kv_pair.dbg())
+                    .collect::<Vec<String>>()
+                    .join(" , ");
+                format!("{{ {elements} }}")
+            }
+            Self::Index { name, i, .. } => format!("{}[{}]", name.dbg(), i.dbg()),
             Self::Prefix { operator, right, .. } => format!("({}{})", operator, right.dbg()),
             Self::Infix { left, operator, right, .. } => format!("({} {} {})", left.dbg(), operator, right.dbg()),
             Self::If { token, condition, consequence, alternative } => {

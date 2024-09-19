@@ -9,6 +9,12 @@ pub mod ast;
 #[derive(Debug)]
 pub struct ParseError(String);
 
+impl ParseError {
+    pub fn not_implemented() -> Self {
+        Self("Not implemented".to_string())
+    }
+}
+
 #[derive(Debug)]
 pub struct Program {
     pub statements: Vec<ast::Statement>
@@ -32,7 +38,7 @@ impl Precedence {
             TokenType::LT | TokenType::GT => Precedence::GTLT,
             TokenType::Plus | TokenType::Dash => Precedence::Sum,
             TokenType::FSlash | TokenType::Star => Precedence::Mult,
-            TokenType::LParen | TokenType::LBracket => Precedence::Call,
+            TokenType::LParen | TokenType::LBracket | TokenType::Colon => Precedence::Call,
             _ => Precedence::Lowest,
         }
     }
@@ -142,7 +148,6 @@ impl Parser {
 
     fn parse_expression(&mut self, precedence: Precedence) -> Result<ast::Expression, ParseError> {
         let mut left = self.parse_prefix()?;
-
         while self.peek_token.typ != TokenType::Semicolon && precedence < Precedence::get_precedence(self.peek_token.typ) { // works with if ??
             match self.parse_infix(left.clone())? {
                 Some(right) => left = right,
@@ -154,7 +159,6 @@ impl Parser {
     }
 
     fn parse_prefix(&mut self) -> Result<ast::Expression, ParseError> {
-        // println!("Current token: {:?}", self.cur_token);
          match self.cur_token.typ {
             TokenType::Identifier => self.parse_identifier_expression(),
             TokenType::Int => self.parse_integer_expression(),
@@ -163,6 +167,7 @@ impl Parser {
             TokenType::Dash | TokenType::Exclam => self.parse_prefix_expression(),
             TokenType::LParen => self.parse_grouped_expression(),
             TokenType::LBracket => self.parse_array_expression(),
+            TokenType::LBrace => self.parse_hash_expression(),
             TokenType::If => self.parse_if_expression(),
             TokenType::Function => self.parse_fn_expression(),
             _ => Err(ParseError(format!("Unable to parse token in prefix position: {:?}", self.cur_token)))
@@ -182,6 +187,11 @@ impl Parser {
             TokenType::LBracket => {
                 self.next_token();
                 Ok(Some(self.parse_array_index_expression(left)?))
+            },
+            TokenType::Colon => {
+                self.next_token();
+                self.next_token();
+                Ok(Some(ast::Expression::KVPair { key: Box::new(left), value: Box::new(self.parse_expression(Precedence::Lowest)?) }))
             }
             _ => Ok(None),
         }
@@ -247,22 +257,19 @@ impl Parser {
         Ok(expression)
     }
 
-    fn parse_array_expression(&mut self) -> Result<ast::Expression, ParseError> {
-        Ok(ast::Expression::Array { token: self.cur_token.clone(), elements: self.parse_array_elements()? })
-    }
+    fn parse_comma_separated(&mut self, end: TokenType) -> Result<Vec<ast::Expression>, ParseError> {
+        let mut vals: Vec<Expression> = Vec::new();
 
-    fn parse_array_elements(&mut self) -> Result<Vec<ast::Expression>, ParseError> {
-        let mut params: Vec<Expression> = Vec::new();
-
-        if self.peek_token.typ == TokenType::RBracket {
+        if self.peek_token.typ == end {
             self.next_token();
-            return Ok(params)
+            return Ok(vals)
         }
-
+        
         self.next_token();
 
         loop {
-            params.push(self.parse_expression(Precedence::Lowest)?);
+            let exp = self.parse_expression(Precedence::Lowest)?;
+            vals.push(exp);
             if self.peek_token.typ == TokenType::Comma {
                 self.next_token();
                 self.next_token();
@@ -271,9 +278,17 @@ impl Parser {
             }
         }
 
-        self.expect_next(TokenType::RBracket)?;
+        self.expect_next(end)?;
 
-        Ok(params)
+        Ok(vals)
+    }
+
+    fn parse_array_expression(&mut self) -> Result<ast::Expression, ParseError> {
+        Ok(ast::Expression::Array { token: self.cur_token.clone(), elements: self.parse_comma_separated(TokenType::RBracket)? })
+    }
+
+    fn parse_hash_expression(&mut self) -> Result<ast::Expression, ParseError> {
+        Ok(ast::Expression::Hash { kv_pairs: self.parse_comma_separated(TokenType::RBrace)? })
     }
 
     fn parse_if_expression(&mut self) -> Result<ast::Expression, ParseError> {
@@ -308,7 +323,7 @@ impl Parser {
         let fn_token = self.cur_token.clone();
 
         self.expect_next(TokenType::LParen)?;
-        let params = self.parse_fn_paramaters()?;
+        let params = self.parse_comma_separated(TokenType::RParen)?;
         self.expect_next(TokenType::LBrace)?;
         let body = self.parse_block_statement()?;
 
@@ -336,31 +351,6 @@ impl Parser {
             token: l_brace_token, 
             statements
          })
-    }
-
-    fn parse_fn_paramaters(&mut self) -> Result<Vec<ast::Expression>, ParseError> {
-        let mut params: Vec<Expression> = Vec::new();
-
-        if self.peek_token.typ == TokenType::RParen {
-            self.next_token();
-            return Ok(params)
-        }
-
-        self.next_token();
-
-        while self.cur_token.typ != TokenType::RParen {
-            params.push(ast::Expression::construct_identifier_expression(&self.cur_token.literal));
-            if self.peek_token.typ == TokenType::Comma {
-                self.next_token();
-                self.next_token();
-            } else {
-                break;
-            }
-        }
-
-        self.expect_next(TokenType::RParen)?;
-
-        Ok(params)
     }
 
     fn parse_infix_expression(&mut self, left: ast::Expression) -> Result<ast::Expression, ParseError> {
@@ -395,10 +385,9 @@ impl Parser {
         let array_idx_token = self.cur_token.clone();
         self.next_token();
         let i = self.parse_expression(Precedence::Lowest)?;
-        println!("cur token: {:?}", self.cur_token);
         self.expect_next(TokenType::RBracket)?;
 
-        Ok(ast::Expression::ArrayIndex { 
+        Ok(ast::Expression::Index { 
             token: array_idx_token, 
             name: Box::new(name), 
             i: Box::new(i)

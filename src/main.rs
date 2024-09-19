@@ -118,7 +118,7 @@ fn start_repl(eval: bool) {
                             println!("********************");
                         }
             
-                        // println!("{program:#?}")
+                        println!("{program:#?}")
                     },
                     Err(err) => println!("{err:?}")
                 }

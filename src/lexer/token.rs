@@ -12,6 +12,7 @@ pub enum TokenType {
     // delimiters
     Comma,
     Semicolon,
+    Colon,
     LParen,
     RParen,
     LBrace,
@@ -37,7 +38,7 @@ pub enum TokenType {
     Return,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Token {
     pub typ: TokenType,
     pub literal: String,
@@ -76,6 +77,9 @@ impl Token {
     }
     pub fn new_semicolon() -> Self {
         Self { typ: TokenType::Semicolon, literal: ";".to_string() }
+    }
+    pub fn new_colon() -> Self {
+        Self { typ: TokenType::Colon, literal: ":".to_string() }
     }
     pub fn new_l_paren() -> Self {
         Self { typ: TokenType::LParen, literal: "(".to_string() }

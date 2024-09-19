@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashMap, rc::{Rc, Weak}};
+use std::{cell::RefCell, collections::HashMap, hash::{DefaultHasher, Hash, Hasher}, rc::{Rc, Weak}};
 
 use crate::parser::{ast::{self, Expression, Statement}, Program};
 
@@ -12,6 +12,8 @@ pub enum Object {
     Boolean(bool),
     String(String),
     Array(Vec<Self>),
+    KVPair(Box<Self>, Box<Self>),
+    HashMap(HashMap<HashKey, Self>),
     Return(Box<Self>),
     Function {
         parameters: Vec<String>, // Identifiers
@@ -21,6 +23,27 @@ pub enum Object {
     Null,
 
     BuiltIn(fn(Vec<Object>) -> Result<Object, EvalError>)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct HashKey {
+    pub typ: String,
+    pub value: usize,
+}
+
+impl HashKey {
+    pub fn get_hash_key(object: &Object) -> Result<Self, EvalError> {
+        match object {
+            Object::Integer(value) => Ok(Self { typ: "int".to_string(), value: *value as usize}),
+            Object::Boolean(value) => Ok(Self { typ: "bool".to_string(), value: if *value {1} else {0}}),
+            Object::String(value) => {
+                let mut hasher = DefaultHasher::new();
+                value.hash(&mut hasher);
+                Ok(Self { typ: "str".to_string(), value: hasher.finish() as usize})
+            },
+            _ => Err(EvalError(format!("Cannot hash object: {object:?}"))),
+        }
+    }
 }
 
 impl Object {
@@ -219,21 +242,64 @@ impl Interpreter {
                     .map(|exp| self.eval_expression(exp, env)).collect::<Result<Vec<Object>, EvalError>>()?;
                Ok(Object::Array(eval_elms))
             },
-            ast::Expression::ArrayIndex { name, i, .. } => {
-                match(
-                    self.eval_expression(name, env)?,
-                    self.eval_expression(i, env)?
-                ) {
-                    (Object::Array(arr), Object::Integer(i)) => {
-                        let i = i as usize;
-                        if i >= arr.len() {
-                            Err(EvalError(format!("Array index out of bounds: i: {}, {}.len(): {}", i, name.as_ref().dbg(),  arr.len())))
+            ast::Expression::KVPair { key, value } => {
+                let key = self.eval_expression(key, env)?;
+                match key {
+                    Object::String(_) | Object::Integer(_) | Object::Boolean(_) => Ok(Object::KVPair(Box::new(key), Box::new(self.eval_expression(value, env)?))),
+                    _ => Err(EvalError(format!("Invalid KV pair, key must be a string, int or bool, got: {key:?}")))
+                }
+            },
+            ast::Expression::Hash { kv_pairs } => {
+                let mut hash_map = HashMap::new();
+                for kv_pair in kv_pairs {
+                    if let ref kv_pair @ Object::KVPair(ref key, ..) = self.eval_expression(kv_pair, env)? {
+                        hash_map.insert(HashKey::get_hash_key(&key)?, kv_pair.clone());
+                    } else {
+                        return Err(EvalError(format!("Invalid hash map, all entries must be a kv pair, got: {kv_pair:?}")));
+                    }
+                }
+
+                Ok(Object::HashMap(hash_map))
+            },
+            ast::Expression::Index { name, i, .. } => {
+                let i = self.eval_expression(i, env)?;
+                match self.eval_expression(name, env)? {
+                    Object::Array(arr) => {
+                        if let Object::Integer(index) = i {
+                            let index = index as usize;
+                            if index >= arr.len() {
+                                return Err(EvalError(format!("Array index out of bounds: i: {}, {}.len(): {}", index, name.as_ref().dbg(),  arr.len())))
+                            } else {
+                                return Ok(arr[index].clone())
+                            }
                         } else {
-                            Ok(arr[i].clone())
+                            return Err(EvalError(format!("Invalid array index expression, expected int, got: {i:?}")))
                         }
                     },
-                    (name @ _, i @ _) => Err(EvalError(format!("Invalid array index expression: ({:?})[{:?}]", name, i )))
+                    Object::HashMap(hash_map) => {
+                        let hash_key = HashKey::get_hash_key(&i)?;
+                        if let Some(val) = hash_map.get(&hash_key) {
+                            Ok(val.clone())
+                        } else {
+                            Ok(Object::Null)
+                        }
+                    }
+                    _ => Err(EvalError(format!("Invalid array index expression: ({:?})[{:?}]", name, i )))
                 }
+                // match(
+                //     self.eval_expression(name, env)?,
+                //     self.eval_expression(i, env)?
+                // ) {
+                //     (Object::Array(arr), Object::Integer(i)) => {
+                //         let i = i as usize;
+                //         if i >= arr.len() {
+                //             Err(EvalError(format!("Array index out of bounds: i: {}, {}.len(): {}", i, name.as_ref().dbg(),  arr.len())))
+                //         } else {
+                //             Ok(arr[i].clone())
+                //         }
+                //     },
+                //     (name @ _, i @ _) => Err(EvalError(format!("Invalid array index expression: ({:?})[{:?}]", name, i )))
+                // }
             }
             ast::Expression::Prefix { operator, right, .. } => {
                 let right = self.eval_expression(right, env)?;
@@ -255,6 +321,7 @@ impl Interpreter {
                 Object::construct_fn(params, body, env)
             },
             ast::Expression::Call { function, arguements, .. } => self.eval_call_expression(function, arguements, env),
+            _ => Err(EvalError("".to_string()))
         }
     }
     

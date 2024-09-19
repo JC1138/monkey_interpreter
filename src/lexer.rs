@@ -50,6 +50,7 @@ impl Lexer {
             '+' => Token::new_plus(),
             ',' => Token::new_comma(),
             ';' => Token::new_semicolon(),
+            ':' => Token::new_colon(),
             '(' => Token::new_l_paren(),
             ')' => Token::new_r_paren(),
             '{' => Token::new_l_brace(),
@@ -154,7 +155,7 @@ mod tests {
 
     #[test]
     fn basic_test() {
-        let src = "=+(){}[],;".to_string();
+        let src = "=+(){}[],;:".to_string();
 
         let expected = vec![
             (TokenType::Assign, "="),
@@ -167,6 +168,7 @@ mod tests {
             (TokenType::RBracket, "]"),
             (TokenType::Comma, ","),
             (TokenType::Semicolon, ";"),
+            (TokenType::Colon, ":"),
             (TokenType::Eof, ""),
         ];
 
