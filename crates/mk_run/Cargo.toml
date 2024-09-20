@@ -1,0 +1,10 @@
+[package]
+name = "mk_run"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "4.5.17", features = ["derive"] }
+parser = { path = "../parser" }
+interpreter = { path = "../interpreter" }
+compiler = { path = "../compiler" }

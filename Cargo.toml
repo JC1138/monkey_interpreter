@@ -1,7 +1,13 @@
-[package]
-name = "monkey_interpreter"
-version = "0.1.0"
-edition = "2021"
+[workspace]
+members = [
+    "crates/parser",
+    "crates/interpreter",
+    "crates/mk_run", 
+    "crates/compiler",
+]
 
-[dependencies]
-clap = { version = "4.5.17", features = ["derive"] }
+[alias]
+mk_run = "run -p mk_run"
+mk_repl = "run -p mk_run -- --reple"
+mk_parse = "run -p mk_run -- --repl"
+mk_comp = "run -p mk_run -- --replc"

@@ -1,12 +1,15 @@
 use clap::Parser;
-use monkey_interpreter::interpreter::{Environment, Interpreter};
-use monkey_interpreter::parser::Program;
+use compiler::Compiler;
+use interpreter::{Environment, Interpreter};
+use parser::lexer::Lexer;
 use std::fs;
 use std::path::Path;
 
 use std::io::{self, Write};
 
-use monkey_interpreter::{lexer::Lexer, parser};
+use parser;
+use parser::Parser as MkParser;
+
 #[derive(Parser)]
 struct Args {
     /// The file name to read (located in /programs directory)
@@ -21,6 +24,9 @@ struct Args {
 
     #[arg(long, action = clap::ArgAction::SetTrue)]
     reple: bool,
+
+    #[arg(long, action = clap::ArgAction::SetTrue)]
+    replc: bool,
 }
 
 fn main() -> Result<(), std::io::Error> {
@@ -28,9 +34,9 @@ fn main() -> Result<(), std::io::Error> {
     let args = Args::parse();
 
     if args.repl {
-        start_repl(false);
-    }else if args.reple {
-        start_repl(true);
+        start_repl(false, false);
+    }else if args.reple || args.replc {
+        start_repl(args.reple, args.replc);
     } else {
         if let Some(file_name) = args.file {
             let parsed = parse_file(&file_name)?;
@@ -46,20 +52,20 @@ fn main() -> Result<(), std::io::Error> {
     Ok(())
 }
 
-fn parse_file(file_name: &str) -> Result<Program, std::io::Error> {
+fn parse_file(file_name: &str) -> Result<parser::Program, std::io::Error> {
     let file_path = Path::new("programs").join(file_name);
     println!("{}", file_path.to_str().unwrap());
     let program = fs::read_to_string(file_path)?;
 
     let lexer = Lexer::new(program.to_string());
 
-    let mut parser = parser::Parser::new(lexer);
+    let mut parser = MkParser::new(lexer);
 
     // let mut token = lexer.next_token();
     Ok(parser.parse_program().unwrap())
 }
 
-fn print_program(program: Program) {
+fn print_program(program: parser::Program) {
     for statement in &program.statements {
         println!("{}", statement.dbg());
     }
@@ -67,7 +73,7 @@ fn print_program(program: Program) {
     println!("{program:#?}");
 }
 
-fn start_repl(eval: bool) {
+fn start_repl(eval: bool, compile: bool) {
     let monkey_face = r#"
     .--.  .-"     "-.  .--.
     / .. \/  .-. .-.  \/ .. \
@@ -104,6 +110,7 @@ fn start_repl(eval: bool) {
                 // }
 
                 let mut parser = parser::Parser::new(lexer);
+                let mut compiler = Compiler::new();
         
                 match parser.parse_program() {
                     Ok(program) => {
@@ -114,6 +121,12 @@ fn start_repl(eval: bool) {
                         if eval {
                             println!("******* EVAL *******");
                             println!("{:?}", interpreter.evaluate_program(&program));
+                            println!("********************");
+                        }
+
+                        if compile {
+                            println!("******* COMPILE *******");
+                            println!("{:?}", compiler.compile_program(&program));
                             println!("********************");
                         }
             

@@ -1,6 +1,6 @@
 use std::{cell::RefCell, collections::HashMap, hash::{DefaultHasher, Hash, Hasher}, rc::{Rc, Weak}};
 
-use crate::parser::{ast::{self, Expression, Statement}, Program};
+use parser::{ast::{self, Expression, Statement}, Program};
 
 #[allow(dead_code)]
 #[derive(Debug)]
