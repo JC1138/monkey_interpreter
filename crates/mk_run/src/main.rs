@@ -1,4 +1,5 @@
 use clap::Parser;
+use compiler::vm::VM;
 use compiler::Compiler;
 use interpreter::{Environment, Interpreter};
 use parser::lexer::Lexer;
@@ -126,7 +127,19 @@ fn start_repl(eval: bool, compile: bool) {
 
                         if compile {
                             println!("******* COMPILE *******");
-                            println!("{:?}", compiler.compile_program(&program));
+                            let bytecode = match compiler.compile_program(&program) {
+                                Ok(bytecode) => bytecode,
+                                Err(e) => {
+                                    println!("{e:?}");
+                                    println!("********************");
+                                    continue;
+                                }
+                            };
+                            println!("{:?}", bytecode);
+                            let vm = VM::new(bytecode);
+                            if let Err(e) = vm.run() {
+                                println!("{e:?}");
+                            }
                             println!("********************");
                         }
             

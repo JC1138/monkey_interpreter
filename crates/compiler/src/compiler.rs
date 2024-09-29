@@ -23,8 +23,8 @@ pub fn unmake(bytes: &Bytes, offset: usize) -> Result<(OpCode, Vec<Arg>, usize),
     let mut args = Vec::new();
     for width in arg_widths {
         match width {
-            1 => args.push(Arg::U8(bytes[offset + bytes_read as usize])),
-            2 => args.push(Arg::U16(binary_helpers::combine_bytes(bytes[offset + bytes_read], bytes[offset + bytes_read + 1]))),
+            1 => args.push(Arg::read_u8(bytes, offset + bytes_read)?),
+            2 => args.push(Arg::read_u16(bytes, offset + bytes_read)?),
             _ => return  Err(CompileError(format!("Invalid arg width: {}", width))),
         }
         bytes_read += width as usize;
@@ -82,10 +82,15 @@ impl Compiler {
         self.constants.len() - 1
     }
 
-    fn emit(&mut self, opcode: OpCode, args: &Vec<Arg>) -> Result<(), CompileError> {
+    fn emit(&mut self, opcode: OpCode, args: &Vec<Arg>) -> Result<usize, CompileError> {
         let bytes = make(opcode, args)?;
+        let start = self.bytes.len();
         self.bytes.extend(bytes);
-        Ok(())
+        Ok(start)
+    }
+
+    fn emit_no_args(&mut self, opcode: OpCode) -> Result<usize, CompileError> {
+        self.emit(opcode, &Vec::new())
     }
 
     pub fn compile_program(&mut self, program: &Program) -> Result<ByteCode, CompileError> {
@@ -104,9 +109,13 @@ impl Compiler {
 
     fn compile_statement(&mut self, statement: &ast::Statement) -> Result<(), CompileError> {
         match statement {
-            ast::Statement::ExpressionStatement { expression, .. } => self.compile_expression(expression),
+            ast::Statement::ExpressionStatement { expression, .. } => {
+                self.compile_expression(expression)?;
+                self.emit(OpCode::Pop, &Vec::new())?;
+                Ok(())
+            },
             // ast::Statement::Block { statements, .. } => self.
-            _ => Ok(())
+            _ => return Err(CompileError(format!("Compilation not implemented for: {:?}", statement))),
         }
     }
 
@@ -115,12 +124,35 @@ impl Compiler {
             ast::Expression::Infix { left, operator, right, .. } => {
                 self.compile_expression(left)?;
                 self.compile_expression(right)?;
+                match operator.as_str() {
+                    "+" => { self.emit_no_args(OpCode::Add)?; },
+                    "-" => { self.emit_no_args(OpCode::Sub)?; },
+                    "*" => { self.emit_no_args(OpCode::Mul)?; },
+                    "/" => { self.emit_no_args(OpCode::Div)?; },
+                    "==" => { self.emit_no_args(OpCode::Eq)?; },
+                    "!=" => { self.emit_no_args(OpCode::NEq)?; },
+                    ">" => { self.emit_no_args(OpCode::GT)?; },
+                    op @ _ => return Err(CompileError(format!("Cannot compile infix operator: {}", op))),
+                }
             },
             ast::Expression::Integer { value, .. } => {
                 let idx = self.add_constant(Object::Integer(*value));
                 self.emit(OpCode::Constant, &vec![Arg::U16(idx as u16)])?;
             },
-            _ => ()
+            ast::Expression::Boolean { value, .. } => {
+                let opcode = if *value { OpCode::True } else { OpCode::False };
+                self.emit(opcode, &Vec::new())?;
+            },
+            ast::Expression::Prefix { operator, right, .. } => {
+                self.compile_expression(&right)?;
+                
+                match operator.as_str() {
+                    "-" => { self.emit_no_args(OpCode::Minus)?; },
+                    "!" => { self.emit_no_args(OpCode::Exclam)?; },
+                    op @ _ => return Err(CompileError(format!("Cannot compile prefix operator: {}", op))),
+                }
+            }
+            _ => return Err(CompileError(format!("Compilation not implemented for: {:?}", expression))),
         }
         Ok(())
     }
