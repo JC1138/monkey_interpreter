@@ -136,6 +136,7 @@ fn start_repl(eval: bool, compile: bool) {
                                 }
                             };
                             println!("{:?}", bytecode);
+                            compiler.decompile().unwrap();
                             let vm = VM::new(bytecode);
                             if let Err(e) = vm.run() {
                                 println!("{e:?}");

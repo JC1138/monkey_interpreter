@@ -161,9 +161,9 @@ impl Compiler {
             },
             ast::Expression::If { condition, consequence, alternative, .. } => {
                 self.compile_expression(&condition)?;
-                self.emit(OpCode::JPFalse, &vec![Arg::U16(0)])?;
 
-                let jp_false_addr_idx = self.bytes.len() - 2;
+                let jp_false_addr_idx = self.bytes.len();
+                self.emit(OpCode::JPFalse, &vec![Arg::U16(0)])?;
 
                 self.compile_statement(&consequence)?;
                 self.remove_last_pop();
@@ -171,20 +171,21 @@ impl Compiler {
                 let mut jp_false_addr = self.bytes.len();
 
                 if let Some(alternative) = alternative {
+                    let jp_addr_idx = self.bytes.len();
                     self.emit(OpCode::JP, &vec![Arg::U16(0)])?;
+                    
                     jp_false_addr = self.bytes.len();
-
-                    let jp_addr_idx = self.bytes.len() - 2;
 
                     self.compile_statement(&alternative)?;
                     self.remove_last_pop();
 
                     let jp_addr = self.bytes.len();
 
-                    self.overwrite_address(jp_addr_idx, jp_addr as u16);
+                    self.overwrite_instruction(jp_addr_idx, &make(OpCode::JP, &vec![Arg::U16(jp_addr as u16)])?);
                 }
 
-                self.overwrite_address(jp_false_addr_idx, jp_false_addr as u16);
+                // self.overwrite_address(jp_false_addr_idx, jp_false_addr as u16);
+                self.overwrite_instruction(jp_false_addr_idx, &make(OpCode::JPFalse, &vec![Arg::U16(jp_false_addr as u16)])?);
             }
             _ => return Err(CompileError(format!("Compilation not implemented for: {:?}", expression))),
         }
@@ -199,10 +200,13 @@ impl Compiler {
         }
     }
 
-    fn overwrite_address(&mut self, addr_idx: usize, addr: u16) {
-        let (h, l) = binary_helpers::split_u16(addr);
-        self.bytes[addr_idx] = h;
-        self.bytes[addr_idx + 1] = l;
+    fn overwrite_instruction(&mut self, addr_idx: usize, new_instruction: &Vec<u8>) {
+        for i in 0..new_instruction.len() {
+            self.bytes[addr_idx + i] = new_instruction[i];
+        }
+        // let (h, l) = binary_helpers::split_u16(addr);
+        // self.bytes[addr_idx] = h;
+        // self.bytes[addr_idx + 1] = l;
     }
 
     pub fn get_byte_code(&self) -> ByteCode {
@@ -215,6 +219,18 @@ impl Compiler {
     pub fn reset(&mut self) {
         self.bytes.clear();
         self.constants.clear();
+    }
+
+    pub fn decompile(&self) -> Result<(), CompileError> {
+        println!("**************Decompile*****************");
+        let mut i = 0;
+        while i < self.bytes.len() {
+            let (opcode, args, bytes_read) = unmake(&self.bytes, i)?;
+            println!("{:?} ({:?})", opcode, args);
+            i += bytes_read;
+        }
+        println!("****************************************");
+        Ok(())
     }
 }
 
