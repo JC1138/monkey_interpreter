@@ -68,8 +68,12 @@ pub enum OpCode {
     Eq = 8,
     NEq = 9,
     GT = 10,
-    Minus = 11,
-    Exclam = 12,
+    LT = 11,
+    Minus = 12,
+    Exclam = 13,
+    JP = 14,
+    JPTrue = 15,
+    JPFalse = 16,
 }
 
 impl OpCode {
@@ -86,8 +90,12 @@ impl OpCode {
             Self::Eq => Vec::new(),
             Self::NEq => Vec::new(),
             Self::GT => Vec::new(),
+            Self::LT => Vec::new(),
             Self::Minus => Vec::new(),
             Self::Exclam => Vec::new(),
+            Self::JP => vec![2],
+            Self::JPTrue => vec![2],
+            Self::JPFalse => vec![2],
         }
     }
 
@@ -104,8 +112,12 @@ impl OpCode {
             _ if opcode == Self::Eq as u8 => Ok(Self::Eq),
             _ if opcode == Self::NEq as u8 => Ok(Self::NEq),
             _ if opcode == Self::GT as u8 => Ok(Self::GT),
+            _ if opcode == Self::LT as u8 => Ok(Self::LT),
             _ if opcode == Self::Minus as u8 => Ok(Self::Minus),
             _ if opcode == Self::Exclam as u8 => Ok(Self::Exclam),
+            _ if opcode == Self::JP as u8 => Ok(Self::JP),
+            _ if opcode == Self::JPTrue as u8 => Ok(Self::JPTrue),
+            _ if opcode == Self::JPFalse as u8 => Ok(Self::JPFalse),
             _ => Err(CompileError(format!("Unknown opcode: {opcode}")))
         }
     }
@@ -122,6 +134,16 @@ pub enum Object {
     Null,
 
     BuiltIn(fn(Vec<Object>) -> Result<Object, CompileError>)
+}
+
+impl Object {
+    pub fn is_truthy(&self) -> bool {
+        match self {
+            Self::Boolean(val) => *val,
+            Self::Integer(val) => *val != 0,
+            _ => false,
+        }
+    }
 }
 
 impl Add for Object {

@@ -77,6 +77,9 @@ impl VM {
                 OpCode::GT => {
                     self.perform_infix_operation(|x, y| Ok(Object::Boolean(x > y)), ">")?;
                 },
+                OpCode::LT => {
+                    self.perform_infix_operation(|x, y| Ok(Object::Boolean(x < y)), "<")?;
+                },
                 OpCode::Minus => {
                     let val = self.pop_stack()?;
                     if let Object::Integer(val) = val {
@@ -112,11 +115,41 @@ impl VM {
 
                     self.ip.set(ip + 1);
                 },
+                OpCode::JP => {
+                    self.jump()?;
+                },
+                OpCode::JPTrue => {
+                    let condition = self.pop_stack()?;
+                    if condition.is_truthy() {
+                        self.jump()?;
+                    }else {
+                        self.ip.set(ip + 3);
+                    }
+                },
+                OpCode::JPFalse => {
+                    let condition = self.pop_stack()?;
+                    if !condition.is_truthy() {
+                        self.jump()?;
+                    }else {
+                        self.ip.set(ip + 3);
+                    }
+                }
             }
 
             println!("Dbg: stack: {:?}", self.stack.borrow());
         }
 
+        Ok(())
+    }
+
+    fn jump(&self) -> Result<(), RuntimeError> {
+        let addr = match Arg::read_u16(&self.bytecode.bytes, self.ip.get() + 1) {
+            Ok(arg) => {
+                if let Arg::U16(addr) = arg { addr } else { unreachable!("Arg::read_u16 must return the Arg:U16 varient!"); }
+            },
+            Err(err) => return Err(map_compile_err(err))
+        } as usize;
+        self.ip.set(addr);
         Ok(())
     }
 

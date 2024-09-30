@@ -1,4 +1,4 @@
-use crate::helpers::binary_helpers;
+use crate::helpers::{self, binary_helpers};
 
 pub use crate::types::*;
 
@@ -112,11 +112,17 @@ impl Compiler {
             ast::Statement::ExpressionStatement { expression, .. } => {
                 self.compile_expression(expression)?;
                 self.emit(OpCode::Pop, &Vec::new())?;
-                Ok(())
             },
+            ast::Statement::Block { statements, .. } => {
+                for statement in statements {
+                    self.compile_statement(statement)?;
+                }
+            }
             // ast::Statement::Block { statements, .. } => self.
             _ => return Err(CompileError(format!("Compilation not implemented for: {:?}", statement))),
         }
+        
+        Ok(())
     }
 
     fn compile_expression(&mut self, expression: &ast::Expression) -> Result<(), CompileError> {
@@ -132,6 +138,7 @@ impl Compiler {
                     "==" => { self.emit_no_args(OpCode::Eq)?; },
                     "!=" => { self.emit_no_args(OpCode::NEq)?; },
                     ">" => { self.emit_no_args(OpCode::GT)?; },
+                    "<" => { self.emit_no_args(OpCode::LT)?; },
                     op @ _ => return Err(CompileError(format!("Cannot compile infix operator: {}", op))),
                 }
             },
@@ -151,10 +158,49 @@ impl Compiler {
                     "!" => { self.emit_no_args(OpCode::Exclam)?; },
                     op @ _ => return Err(CompileError(format!("Cannot compile prefix operator: {}", op))),
                 }
+            },
+            ast::Expression::If { condition, consequence, alternative, .. } => {
+                self.compile_expression(&condition)?;
+                self.emit(OpCode::JPFalse, &vec![Arg::U16(0)])?;
+
+                let jp_false_addr_idx = self.bytes.len() - 2;
+
+                self.compile_statement(&consequence)?;
+                self.remove_last_pop();
+
+                let mut jp_false_addr = self.bytes.len();
+
+                if let Some(alternative) = alternative {
+                    self.emit(OpCode::JP, &vec![Arg::U16(0)])?;
+                    jp_false_addr = self.bytes.len();
+
+                    let jp_addr_idx = self.bytes.len() - 2;
+
+                    self.compile_statement(&alternative)?;
+                    self.remove_last_pop();
+                    
+                    let jp_addr = self.bytes.len();
+
+                    let (h, l) = binary_helpers::split_u16(jp_addr as u16);
+                    self.bytes[jp_addr_idx] = h;
+                    self.bytes[jp_addr_idx + 1] = l;
+                }
+
+                let (h, l) = binary_helpers::split_u16(jp_false_addr as u16);
+                self.bytes[jp_false_addr_idx] = h;
+                self.bytes[jp_false_addr_idx + 1] = l;
             }
             _ => return Err(CompileError(format!("Compilation not implemented for: {:?}", expression))),
         }
         Ok(())
+    }
+
+    fn remove_last_pop(&mut self) {
+        if let Some(val) = self.bytes.last() {
+            if *val == OpCode::Pop as u8 {
+                self.bytes.pop();
+            }
+        }
     }
 
     pub fn get_byte_code(&self) -> ByteCode {
