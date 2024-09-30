@@ -115,6 +115,11 @@ impl VM {
 
                     self.ip.set(ip + 1);
                 },
+                OpCode::Null => {
+                    self.push_stack(Object::Null)?;
+
+                    self.ip.set(ip + 1);
+                },
                 OpCode::JP => {
                     self.jump()?;
                 },

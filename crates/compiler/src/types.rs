@@ -74,28 +74,30 @@ pub enum OpCode {
     JP = 14,
     JPTrue = 15,
     JPFalse = 16,
+    Null = 17,
 }
 
 impl OpCode {
     pub fn get_arg_widths(&self) -> Vec<u8> {
         match self {
             Self::Constant => vec![2],
-            Self::Pop => Vec::new(),
-            Self::Add => Vec::new(),
-            Self::Sub => Vec::new(),
-            Self::Mul => Vec::new(),
-            Self::Div => Vec::new(),
-            Self::True => Vec::new(),
-            Self::False => Vec::new(),
-            Self::Eq => Vec::new(),
-            Self::NEq => Vec::new(),
-            Self::GT => Vec::new(),
-            Self::LT => Vec::new(),
-            Self::Minus => Vec::new(),
-            Self::Exclam => Vec::new(),
+            Self::Pop => vec![],
+            Self::Add => vec![],
+            Self::Sub => vec![],
+            Self::Mul => vec![],
+            Self::Div => vec![],
+            Self::True => vec![],
+            Self::False => vec![],
+            Self::Eq => vec![],
+            Self::NEq => vec![],
+            Self::GT => vec![],
+            Self::LT => vec![],
+            Self::Minus => vec![],
+            Self::Exclam => vec![],
             Self::JP => vec![2],
             Self::JPTrue => vec![2],
             Self::JPFalse => vec![2],
+            Self::Null => vec![],
         }
     }
 
@@ -118,6 +120,7 @@ impl OpCode {
             _ if opcode == Self::JP as u8 => Ok(Self::JP),
             _ if opcode == Self::JPTrue as u8 => Ok(Self::JPTrue),
             _ if opcode == Self::JPFalse as u8 => Ok(Self::JPFalse),
+            _ if opcode == Self::Null as u8 => Ok(Self::Null),
             _ => Err(CompileError(format!("Unknown opcode: {opcode}")))
         }
     }
