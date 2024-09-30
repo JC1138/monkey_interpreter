@@ -178,17 +178,13 @@ impl Compiler {
 
                     self.compile_statement(&alternative)?;
                     self.remove_last_pop();
-                    
+
                     let jp_addr = self.bytes.len();
 
-                    let (h, l) = binary_helpers::split_u16(jp_addr as u16);
-                    self.bytes[jp_addr_idx] = h;
-                    self.bytes[jp_addr_idx + 1] = l;
+                    self.overwrite_address(jp_addr_idx, jp_addr as u16);
                 }
 
-                let (h, l) = binary_helpers::split_u16(jp_false_addr as u16);
-                self.bytes[jp_false_addr_idx] = h;
-                self.bytes[jp_false_addr_idx + 1] = l;
+                self.overwrite_address(jp_false_addr_idx, jp_false_addr as u16);
             }
             _ => return Err(CompileError(format!("Compilation not implemented for: {:?}", expression))),
         }
@@ -201,6 +197,12 @@ impl Compiler {
                 self.bytes.pop();
             }
         }
+    }
+
+    fn overwrite_address(&mut self, addr_idx: usize, addr: u16) {
+        let (h, l) = binary_helpers::split_u16(addr);
+        self.bytes[addr_idx] = h;
+        self.bytes[addr_idx + 1] = l;
     }
 
     pub fn get_byte_code(&self) -> ByteCode {
