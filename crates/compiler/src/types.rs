@@ -27,18 +27,20 @@ impl Arg {
         }
     }
 
-    pub fn read_u8(bytes: &Bytes, offset: usize) -> Result<Arg, CompileError> {
+    pub fn read_u8(bytes: &Bytes, offset: usize) -> Result<(Arg, u8), CompileError> {
         if bytes.len() <= offset {
             return Err(CompileError("read_u8: offset larger than bytes size!".to_string()))
         }
-        Ok(Arg::U8(bytes[offset]))
+        let val = bytes[offset];
+        Ok((Arg::U8(val), val))
     }
     
-    pub fn read_u16(bytes: &Bytes, offset: usize) -> Result<Arg, CompileError> {
+    pub fn read_u16(bytes: &Bytes, offset: usize) -> Result<(Arg, u16), CompileError> {
         if bytes.len() <= offset + 1 {
             return Err(CompileError(format!("read_u16: offset: {} larger than bytes size: {}", offset, bytes.len())))
         }
-        Ok(Arg::U16(binary_helpers::combine_bytes(bytes[offset], bytes[offset + 1])))
+        let val = binary_helpers::combine_bytes(bytes[offset], bytes[offset + 1]);
+        Ok((Arg::U16(val), val))
     }
 }
 
@@ -75,6 +77,8 @@ pub enum OpCode {
     JPTrue = 15,
     JPFalse = 16,
     Null = 17,
+    GetGlobal = 18,
+    SetGlobal = 19,
 }
 
 impl OpCode {
@@ -98,6 +102,9 @@ impl OpCode {
             Self::JPTrue => vec![2],
             Self::JPFalse => vec![2],
             Self::Null => vec![],
+            Self::SetGlobal => vec![2],
+            Self::GetGlobal => vec![2],
+
         }
     }
 
@@ -121,12 +128,14 @@ impl OpCode {
             _ if opcode == Self::JPTrue as u8 => Ok(Self::JPTrue),
             _ if opcode == Self::JPFalse as u8 => Ok(Self::JPFalse),
             _ if opcode == Self::Null as u8 => Ok(Self::Null),
+            _ if opcode == Self::SetGlobal as u8 => Ok(Self::SetGlobal),
+            _ if opcode == Self::GetGlobal as u8 => Ok(Self::GetGlobal),
             _ => Err(CompileError(format!("Unknown opcode: {opcode}")))
         }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, Hash)]
 pub enum Object {
     Integer(isize),
     Boolean(bool),

@@ -13,6 +13,8 @@ pub struct VM {
     stack: RefCell<Vec<Object>>,
     sp: Cell<usize>,
     ip: Cell<usize>,
+    globals: RefCell<Vec<Object>>,
+
 }
 
 impl VM {
@@ -23,14 +25,13 @@ impl VM {
             stack: RefCell::new(stack),
             sp: Cell::new(0),
             ip: Cell::new(0),
+            globals: RefCell::new(vec![Object::Null; STACK_SIZE]),
         }
     }
 
     pub fn run(&self) -> Result<(), RuntimeError> {
-        let mut ip;
-
-        loop {
-            ip = self.ip.get();
+         loop {
+            let mut ip = self.ip.get();
             // println!("IP: {}", ip);
             if ip >= self.bytecode.bytes.len() { break; }
 
@@ -40,14 +41,15 @@ impl VM {
 
             match opcode {
                 OpCode::Constant => {
+                    // let idx = match Arg::read_u16(&self.bytecode.bytes, ip) {
+                    //     Ok(arg) => {
+                    //         if let Arg::U16(x) = arg { x } else { unreachable!("Arg::read_u16 must return the Arg:U16 varient!"); }
+                    //     },
+                    //     Err(err) => return Err(map_compile_err(err))
+                    // } as usize;
                     ip += 1;
-                    let idx = match Arg::read_u16(&self.bytecode.bytes, ip) {
-                        Ok(arg) => {
-                            if let Arg::U16(x) = arg { x } else { unreachable!("Arg::read_u16 must return the Arg:U16 varient!"); }
-                        },
-                        Err(err) => return Err(map_compile_err(err))
-                    } as usize;
-
+                    let (_, idx) = Arg::read_u16(&self.bytecode.bytes, ip).map_err(map_compile_err)?;
+                    let idx = idx as usize;
                     if idx >= self.bytecode.constants.len() {
                         return Err(RuntimeError(format!("Attempted to access object at index {}, but objects len is {}", idx, self.bytecode.constants.len())))
                     }
@@ -95,6 +97,7 @@ impl VM {
                     match val {
                         Object::Boolean(val) => self.push_stack(Object::Boolean(!val))?,
                         Object::Integer(val) => self.push_stack(Object::Boolean(val == 0))?,
+                        Object::Null => self.push_stack(Object::Boolean(true))?,
                         _ => return Err(RuntimeError(format!("`!` can only be applied to Booleans and Integers got: {val:?}"))),
                     };
 
@@ -138,6 +141,18 @@ impl VM {
                     }else {
                         self.ip.set(ip + 3);
                     }
+                },
+                OpCode::SetGlobal => {
+                    let (_, idx) = Arg::read_u16(&self.bytecode.bytes, ip + 1).map_err(map_compile_err)?;
+                    self.globals.borrow_mut()[idx as usize] = self.pop_stack()?;
+
+                    self.ip.set(ip + 3);
+                },
+                OpCode::GetGlobal => {
+                    let (_, idx) = Arg::read_u16(&self.bytecode.bytes, ip + 1).map_err(map_compile_err)?;
+                    self.push_stack(self.globals.borrow()[idx as usize].clone())?;
+
+                    self.ip.set(ip + 3);
                 }
             }
 
@@ -148,12 +163,14 @@ impl VM {
     }
 
     fn jump(&self) -> Result<(), RuntimeError> {
-        let addr = match Arg::read_u16(&self.bytecode.bytes, self.ip.get() + 1) {
-            Ok(arg) => {
-                if let Arg::U16(addr) = arg { addr } else { unreachable!("Arg::read_u16 must return the Arg:U16 varient!"); }
-            },
-            Err(err) => return Err(map_compile_err(err))
-        } as usize;
+        // let addr = match Arg::read_u16(&self.bytecode.bytes, self.ip.get() + 1) {
+        //     Ok(arg) => {
+        //         if let Arg::U16(addr) = arg { addr } else { unreachable!("Arg::read_u16 must return the Arg:U16 varient!"); }
+        //     },
+        //     Err(err) => return Err(map_compile_err(err))
+        // } as usize;
+        let (_, addr) = Arg::read_u16(&self.bytecode.bytes, self.ip.get() + 1).map_err(map_compile_err)?;
+        let addr = addr as usize;
         self.ip.set(addr);
         Ok(())
     }

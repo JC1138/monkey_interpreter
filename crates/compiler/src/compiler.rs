@@ -1,4 +1,4 @@
-use crate::helpers::{self, binary_helpers};
+use crate::{helpers::{self, binary_helpers}, symbol_table::SymbolTable};
 
 pub use crate::types::*;
 
@@ -23,8 +23,8 @@ pub fn unmake(bytes: &Bytes, offset: usize) -> Result<(OpCode, Vec<Arg>, usize),
     let mut args = Vec::new();
     for width in arg_widths {
         match width {
-            1 => args.push(Arg::read_u8(bytes, offset + bytes_read)?),
-            2 => args.push(Arg::read_u16(bytes, offset + bytes_read)?),
+            1 => args.push(Arg::read_u8(bytes, offset + bytes_read)?.0),
+            2 => args.push(Arg::read_u16(bytes, offset + bytes_read)?.0),
             _ => return  Err(CompileError(format!("Invalid arg width: {}", width))),
         }
         bytes_read += width as usize;
@@ -66,7 +66,8 @@ pub fn make(opcode: OpCode, args: &Vec<Arg>) -> Result<Vec<u8>, CompileError> {
 
 pub struct Compiler {
     bytes: Bytes,
-    constants: Constants
+    constants: Constants,
+    symbol_table: SymbolTable,
 }
 
 impl Compiler {
@@ -74,6 +75,7 @@ impl Compiler {
         Self {
             bytes: Vec::new(),
             constants: Vec::new(),
+            symbol_table: SymbolTable::new(),
         }
     }
 
@@ -117,7 +119,16 @@ impl Compiler {
                 for statement in statements {
                     self.compile_statement(statement)?;
                 }
-            }
+            },
+            ast::Statement::Let { name, value, .. } => {
+                if let ast::Expression::Identifier { value: name, .. } = name {
+                    self.compile_expression(value)?;
+                    let idx = self.symbol_table.define(&name);
+                    self.emit(OpCode::SetGlobal, &vec![Arg::U16(idx)])?;
+                } else {
+                    return Err(CompileError(format!("Invalie Let statement, expected identifier, got: {:?}", name)))
+                }
+            },
             // ast::Statement::Block { statements, .. } => self.
             _ => return Err(CompileError(format!("Compilation not implemented for: {:?}", statement))),
         }
@@ -184,6 +195,10 @@ impl Compiler {
 
                 self.overwrite_instruction(jp_addr_idx, &make(OpCode::JP, &vec![Arg::U16(jp_addr as u16)])?);
                 self.overwrite_instruction(jp_false_addr_idx, &make(OpCode::JPFalse, &vec![Arg::U16(jp_false_addr as u16)])?);
+            },
+            ast::Expression::Identifier { value, .. } => {
+                let idx = self.symbol_table.resolve(&value).ok_or(CompileError(format!("Cannot resolve symbol: {}", value)))?;
+                self.emit(OpCode::GetGlobal, &vec![Arg::U16(idx)])?;
             }
             _ => return Err(CompileError(format!("Compilation not implemented for: {:?}", expression))),
         }
